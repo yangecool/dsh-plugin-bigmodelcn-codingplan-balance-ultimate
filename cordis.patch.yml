@@ -1,0 +1,9 @@
+# dsh-plugin-bigmodelcn-codingplan-balance-ultimate — bundle patch.
+#
+# The row mounts both halves of the plugin: the Host half (lib/index.js) registers
+# the same-origin BigModel OAuth and quota proxy routes on the web server, and the
+# Client half (lib/client.js) registers the sidebar usage page and the composer
+# remaining-quota popover.
+- insert:
+    - id: ui-bigmodelcn-codingplan-balance
+      name: 'dsh-plugin-bigmodelcn-codingplan-balance-ultimate'

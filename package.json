@@ -1,0 +1,43 @@
+{
+  "name": "dsh-plugin-bigmodelcn-codingplan-balance-ultimate",
+  "version": "1.0.0",
+  "description": "BigModel Coding Plan quota and usage for the DeepSeek Harness Web GUI: BigModel OAuth login, a remaining-quota popover at the composer, and a dedicated usage statistics page.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/host",
+    "lib/client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "README.zh.md",
+    "CHANGELOG.md"
+  ],
+  "keywords": ["dsh", "dsh-plugin", "deepseek-harness", "bigmodel", "zhipu", "glm", "coding-plan", "quota", "usage", "balance"],
+  "license": "MIT",
+  "scripts": {
+    "build:client": "node scripts/build-client.mjs",
+    "test": "node --test tests/host/ tests/client/"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": ["@deepseek-ai/dsh-client-ui-slots"]
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "BigModel 编程套餐",
+    "description": "通过 OAuth 登录 BigModel，在输入框浮窗显示编程套餐剩余额度，并提供独立的用量统计页面。"
+  }
+}
