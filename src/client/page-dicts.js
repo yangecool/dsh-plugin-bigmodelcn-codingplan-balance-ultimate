@@ -19,7 +19,6 @@ export const pageDicts = {
     'page.refreshAria': '刷新额度与用量',
     'page.retry': '重试',
     'page.cancel': '取消',
-    'page.confirm': '确认',
     'page.lastUpdated': '更新于 {time}',
     'page.stale': '数据可能已过期',
     'page.account': '账户',
@@ -27,13 +26,11 @@ export const pageDicts = {
     'page.signedOut': '未登录',
     'page.familyBigModel': 'BigModel',
     'page.familyZai': 'Z.AI',
-    'page.loadingData': '正在加载数据…',
 
     // Section headings.
     'page.sectionQuota': '剩余额度',
     'page.sectionUsage': '用量统计',
     'page.sectionReset': '重置机会',
-    'page.sectionSettings': '设置',
 
     // Plan card.
     'page.planTitle': '编程套餐',
@@ -45,7 +42,6 @@ export const pageDicts = {
     'page.planExpireTime': '到期时间',
     'page.planAutoRenew': '自动续订',
     'page.planManualRenew': '手动续订',
-    'page.planNoPlanTitle': '当前账户未开通编程套餐',
     'page.planNoPlanBody': '开通 BigModel 编程套餐后，这里会显示剩余额度与用量统计。',
     'page.planOpen': '了解编程套餐',
     'page.logout': '退出登录',
@@ -58,7 +54,6 @@ export const pageDicts = {
     'page.loginBody': '通过 BigModel OAuth 授权登录后，即可在这里查看编程套餐的剩余额度、重置机会和模型用量。',
     'page.loginInferenceHint': '登录后会自动为当前模型服务商写入推理凭证，无需再粘贴 API Key。',
     'page.loginButton': '登录 BigModel',
-    'page.loginBusy': '正在启动登录…',
     'page.loginWaitingTitle': '等待浏览器授权',
     'page.loginWaitingBody': '请在浏览器中完成 BigModel 授权，授权成功后本页面会自动更新。',
     'page.loginOpenLink': '打开授权页面',
@@ -82,8 +77,6 @@ export const pageDicts = {
     'page.errorUpstream': 'BigModel 服务暂时不可用，请稍后重试。',
     'page.errorTimeout': '请求超时，请稍后重试。',
     'page.errorUnknown': '发生未知错误，请稍后重试。',
-    'page.emptyTitle': '暂无数据',
-    'page.emptyBody': '当前账户还没有可显示的用量数据。',
     'page.quotaUnavailable': '额度数据暂不可用',
     'page.quotaUnavailableBody': '登录可能已过期，或 BigModel 服务暂时不可用。',
     'page.errorNetwork': '网络连接失败，请检查网络后重试。',
@@ -161,7 +154,6 @@ export const pageDicts = {
     'usage.updated': '更新于 {time}',
 
     // Reset chances.
-    'reset.title': '重置机会',
     'reset.fiveHour': '5 小时窗口重置',
     'reset.week': '每周窗口重置',
     'reset.availableCount': '可用 {count} 次',
@@ -178,7 +170,6 @@ export const pageDicts = {
     'reset.throttled': '重置操作冷却中，约 10 分钟后可再次尝试。',
     'reset.failed': '重置失败，请稍后重试。',
     'reset.unavailable': '当前账户暂不支持重置机会。',
-    'reset.loading': '正在加载重置状态…',
     'reset.unreadHistory': '有新的重置记录',
     'reset.kindsFiveHour': '5 小时',
     'reset.kindsWeek': '每周',
@@ -211,7 +202,6 @@ export const pageDicts = {
     'page.refreshAria': 'Refresh quota and usage',
     'page.retry': 'Retry',
     'page.cancel': 'Cancel',
-    'page.confirm': 'Confirm',
     'page.lastUpdated': 'Updated {time}',
     'page.stale': 'Data may be out of date',
     'page.account': 'Account',
@@ -219,13 +209,11 @@ export const pageDicts = {
     'page.signedOut': 'Not signed in',
     'page.familyBigModel': 'BigModel',
     'page.familyZai': 'Z.AI',
-    'page.loadingData': 'Loading data…',
 
     // Section headings.
     'page.sectionQuota': 'Remaining quota',
     'page.sectionUsage': 'Usage statistics',
     'page.sectionReset': 'Reset chances',
-    'page.sectionSettings': 'Settings',
 
     // Plan card.
     'page.planTitle': 'Coding Plan',
@@ -237,7 +225,6 @@ export const pageDicts = {
     'page.planExpireTime': 'Expires',
     'page.planAutoRenew': 'Auto-renew',
     'page.planManualRenew': 'Manual renewal',
-    'page.planNoPlanTitle': 'No Coding Plan on this account',
     'page.planNoPlanBody': 'Once a BigModel Coding Plan is active, remaining quota and usage statistics appear here.',
     'page.planOpen': 'Explore Coding Plan',
     'page.logout': 'Sign out',
@@ -250,7 +237,6 @@ export const pageDicts = {
     'page.loginBody': 'Sign in with BigModel OAuth to see Coding Plan quota, reset chances, and model usage here.',
     'page.loginInferenceHint': 'Signing in also writes the inference credential for the current model provider, so no pasted API key is needed.',
     'page.loginButton': 'Sign in to BigModel',
-    'page.loginBusy': 'Starting sign-in…',
     'page.loginWaitingTitle': 'Waiting for authorization',
     'page.loginWaitingBody': 'Complete the BigModel authorization in your browser. This page updates automatically when it finishes.',
     'page.loginOpenLink': 'Open authorization page',
@@ -274,8 +260,6 @@ export const pageDicts = {
     'page.errorUpstream': 'The BigModel service is temporarily unavailable. Try again later.',
     'page.errorTimeout': 'The request timed out. Try again later.',
     'page.errorUnknown': 'Something went wrong. Try again later.',
-    'page.emptyTitle': 'No data yet',
-    'page.emptyBody': 'There is no usage data to show yet.',
     'page.quotaUnavailable': 'Quota data is unavailable',
     'page.quotaUnavailableBody': 'Your sign-in may have expired, or the BigModel service is temporarily unavailable.',
     'page.errorNetwork': 'Network connection failed. Check your connection and try again.',
@@ -353,7 +337,6 @@ export const pageDicts = {
     'usage.updated': 'Updated {time}',
 
     // Reset chances.
-    'reset.title': 'Reset chances',
     'reset.fiveHour': '5-hour window reset',
     'reset.week': 'Weekly window reset',
     'reset.availableCount': '{count} available',
@@ -370,7 +353,6 @@ export const pageDicts = {
     'reset.throttled': 'Resets are cooling down. Try again in about 10 minutes.',
     'reset.failed': 'Reset failed. Try again later.',
     'reset.unavailable': 'Reset chances are not available for this account.',
-    'reset.loading': 'Loading reset status…',
     'reset.unreadHistory': 'New reset history',
     'reset.kindsFiveHour': '5-hour',
     'reset.kindsWeek': 'weekly',

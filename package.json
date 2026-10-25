@@ -19,8 +19,8 @@
     "locale/*.json",
     "icon.svg",
     "README.md",
-    "README.zh.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "keywords": [
     "dsh",

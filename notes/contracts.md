@@ -122,9 +122,9 @@ createAccount({ http, store, logger, now = () => Date.now() })
       // `Bearer <accessToken>`. ZCode proves monitor/quota/usage and personal subscription
       // reads are PAT-scoped (notes/zcode-api-spec.md §2.3/§2.4); the OAuth business token
       // is only for customerInfo/api_keys and the reset X-Bigmodel-Authorization header.
-      // The project token is issued lazily (ensureKeyLocation + issueProjectToken) only when the
-      // access-token candidates are rejected with 401/403. Cache the winning candidate per
-      // `${family}:${channel}` in memory. Return { authorization, response, kind }.
+      // The project token is issued lazily (ensureKeyLocation + issueProjectToken) on the
+      // first probe that needs it. Cache the winning candidate per `${family}:${channel}`
+      // in memory. Return { authorization, response, kind }.
       // Any non-auth status (e.g. 200/409/400 business envelope) wins immediately.
       // If every candidate fails auth -> HostError('login_expired', 401).
     clearCache()
@@ -435,7 +435,7 @@ Exports `ComposerIndicator`, `indicatorDicts`, `indicatorCss`.
 cd <plugin dir>
 npm install --no-audit --no-fund            # esbuild only (dev)
 node scripts/build-client.mjs               # src/client -> lib/client.js
-node --test tests/host/ tests/client/       # unit tests
+node --test tests/host/*.test.mjs tests/client/*.test.mjs   # unit tests
 node -e "import('./lib/index.js').then(m=>console.log(typeof m.apply))"
 ```
 

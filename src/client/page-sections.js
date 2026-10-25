@@ -349,18 +349,34 @@ export function QuotaCard(props) {
 
 /**
  * Quota section: one card per quota window, or the no-plan empty card.
- * @param props - `t`, `locale`, `now`, `quota`, `family`, `overrides` (window id
- *   to boolean map of optimistic post-reset windows).
+ * @param props - `t`, `locale`, `now`, `quota`, `subscription`, `family`,
+ *   `overrides` (window id to boolean map of optimistic post-reset windows), and
+ *   `onRetry` for the quota-unavailable state.
  * @returns the section element.
  */
 export function QuotaSection(props) {
-  const { t, locale, now, quota, family, overrides = null } = props ?? {};
+  const { t, locale, now, quota, subscription, family, overrides = null, onRetry } = props ?? {};
   const limits = quota && Array.isArray(quota.limits)
     ? quota.limits.filter((limit) => limit !== null && typeof limit === 'object')
     : [];
   limits.sort((left, right) => windowOrder(windowOf(left)) - windowOrder(windowOf(right)));
 
   if (limits.length === 0) {
+    const hasPlan = subscription !== null && subscription !== undefined
+      && typeof subscription === 'object' && subscription.active === true;
+    if (hasPlan) {
+      return el(Card, { className: 'bmc-page-card' },
+        el(EmptyState, {
+          icon: 'gauge',
+          title: t('page.quotaUnavailable'),
+          body: t('page.quotaUnavailableBody'),
+          action: el(Button, {
+            variant: 'ghost',
+            size: 'sm',
+            onClick: typeof onRetry === 'function' ? onRetry : undefined,
+          }, t('page.retry')),
+        }));
+    }
     return el(Card, { className: 'bmc-page-card' },
       el(EmptyState, {
         icon: 'gauge',
@@ -423,6 +439,12 @@ function resetErrorText(t, error) {
   }
   if (code === 'reset_unavailable') {
     return t('reset.unavailable');
+  }
+  if (code === 'login_expired' || code === 'not_logged_in') {
+    return t('page.loginExpiredBody');
+  }
+  if (code === '') {
+    return t('reset.failed');
   }
   return errorTextOf(error, t);
 }

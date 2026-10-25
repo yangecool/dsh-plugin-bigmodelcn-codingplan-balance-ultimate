@@ -82,6 +82,15 @@ function apply(ctx) {
     key: PANEL_ID,
     locale: LOCALE_NS,
   }, BigModelUsagePage));
+  // Second entry point: the same page is reachable from Settings, so the
+  // feature is discoverable even when the sidebar rail is collapsed or hidden.
+  ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section',
+    id: 'bigmodelcn-usage',
+    order: 12,
+    label: () => ctx.locale.bind(LOCALE_NS)('app.nav'),
+    locale: LOCALE_NS,
+  }, BigModelUsagePage));
   ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
     name: 'conversation.input.right',
     id: 'bigmodelcn-balance',

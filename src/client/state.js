@@ -39,7 +39,7 @@ class ClientError extends Error {
   }
 }
 
-/** Snapshot shape document: config/auth/overview/usage/range/reset/login/loading/error/lastUpdated. */
+/** Snapshot shape: config/auth/overview/usage/range/reset/inference/login/loading/error/lastUpdated. */
 function initialSnapshot() {
   return {
     config: null,
@@ -48,6 +48,7 @@ function initialSnapshot() {
     usage: null,
     usageRange: 'today',
     reset: null,
+    inference: null,
     login: { ...EMPTY_LOGIN },
     loading: { ...EMPTY_LOADING },
     error: null,
@@ -136,6 +137,7 @@ function applyExpiredAuth() {
       account: previous?.account ?? null,
       family: previous?.family ?? snapshot.config?.family ?? null,
     },
+    inference: null,
     login: { state: 'expired', authorizeUrl: null, error: translate('auth.loginExpiredBody') },
   });
   setLoading('login', false);
@@ -148,6 +150,38 @@ function recordError(scope, error) {
   if (normalized.code === 'login_expired') applyExpiredAuth();
   set({ error: normalized });
   return normalized;
+}
+
+/** Read a finite number; null otherwise. */
+function finiteNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Map a Host inference payload to the snapshot inference block.
+ * Keeps credential metadata only (never a token) and tolerates a Host that
+ * reports its error as `{ code, message }` instead of a code string.
+ * @param inference - the `inference` object from `/api/status` or `/api/overview`.
+ * @returns the normalized block, or null when the Host publishes none.
+ */
+function inferenceFromPayload(inference) {
+  if (inference === null || typeof inference !== 'object' || Array.isArray(inference)) return null;
+  const rawError = inference.error;
+  const error = typeof rawError === 'string' && rawError !== ''
+    ? rawError
+    : rawError !== null && typeof rawError === 'object' && typeof rawError.code === 'string' && rawError.code !== ''
+      ? rawError.code
+      : null;
+  return {
+    enabled: inference.enabled === true,
+    available: inference.available === true,
+    ref: typeof inference.ref === 'string' && inference.ref !== '' ? inference.ref : null,
+    family: typeof inference.family === 'string' && inference.family !== '' ? inference.family : null,
+    writtenAt: finiteNumber(inference.writtenAt),
+    expiresAt: finiteNumber(inference.expiresAt),
+    expiresInMs: finiteNumber(inference.expiresInMs),
+    error,
+  };
 }
 
 /** Map a Host auth payload to the snapshot auth fields. */
@@ -311,7 +345,12 @@ export function bootstrap() {
       const config = data?.config !== null && typeof data?.config === 'object' ? data.config : null;
       const login = loginFromPayload(data?.login);
       bootstrapped = true;
-      set({ config, auth: authFromPayload(data?.auth), login });
+      set({
+        config,
+        auth: authFromPayload(data?.auth),
+        inference: inferenceFromPayload(data?.inference),
+        login,
+      });
       clearScopeError('bootstrap');
       if (login.state === 'pending') scheduleLoginPoll();
     } catch (error) {
@@ -341,6 +380,7 @@ export function refreshOverview(options) {
       const auth = authFromPayload(data.auth);
       const changes = {
         overview: data,
+        inference: inferenceFromPayload(data.inference),
         lastUpdated: Number.isFinite(data.generatedAt) ? data.generatedAt : Date.now(),
       };
       if (auth !== null) changes.auth = auth;
@@ -555,7 +595,10 @@ async function afterLoginReady() {
     const data = await request('/status', { timeoutMs: STATUS_TIMEOUT_MS });
     if (data !== null && typeof data === 'object') {
       const login = loginFromPayload(data.login);
-      const changes = { login: login.state === 'ready' ? { ...login, state: 'idle' } : login };
+      const changes = {
+        inference: inferenceFromPayload(data.inference),
+        login: login.state === 'ready' ? { ...login, state: 'idle' } : login,
+      };
       if (data.config !== null && typeof data.config === 'object') changes.config = data.config;
       const auth = authFromPayload(data.auth);
       if (auth !== null) changes.auth = auth;
@@ -587,6 +630,7 @@ export function logout() {
       overview: null,
       usage: null,
       reset: null,
+      inference: null,
       login: { ...EMPTY_LOGIN },
       lastUpdated: null,
     });

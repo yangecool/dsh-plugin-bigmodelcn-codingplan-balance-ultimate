@@ -55,7 +55,7 @@ const zh = {
   'auth.billingCycleNone': '无',
   'auth.logoutConfirm': '确定要退出登录吗？',
 
-  'app.nav': '编程套餐',
+  'app.nav': 'BigModel 用量',
   'app.title': 'BigModel 编程套餐',
   'app.subtitle': '额度与用量统计',
 
@@ -120,7 +120,7 @@ const en = {
   'auth.billingCycleNone': 'None',
   'auth.logoutConfirm': 'Sign out of BigModel?',
 
-  'app.nav': 'Coding plan',
+  'app.nav': 'BigModel usage',
   'app.title': 'BigModel coding plan',
   'app.subtitle': 'Quota and usage statistics',
 

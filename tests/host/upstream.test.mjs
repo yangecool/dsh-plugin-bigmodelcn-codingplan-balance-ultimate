@@ -610,7 +610,7 @@ describe('upstream requests', () => {
       }),
     });
     const usage = await upstream.usage({ family: 'bigmodel', auth: AUTH, account, range: '7d', timeZone: 'UTC' });
-    assert.equal(http.calls.length, 4);
+    assert.equal(http.calls.length, 5);
 
     const modelUrl = callFor(http, '/api/monitor/usage/model-usage').search;
     assert.equal(modelUrl.get('startTime'), '2026-06-26 00:00:00');
@@ -696,6 +696,44 @@ describe('upstream requests', () => {
     });
     await assert.rejects(
       upstream.usage({ family: 'bigmodel', auth: AUTH, account, range: '7d', timeZone: 'UTC' }),
+      (error) => {
+        assert.equal(error.code, 'upstream_failed');
+        return true;
+      },
+    );
+  });
+
+  it('accepts a tool-usage envelope without data but rejects a model-usage one', async () => {
+    const toolWithoutData = createHarness({
+      '/api/monitor/usage/model-usage': { status: 200, body: fixture('usage-model.json') },
+      '/api/monitor/usage/tool-usage': { status: 200, body: { code: 200, msg: '操作成功' } },
+      '/api/monitor/credit-usage/activity': { status: 200, body: fixture('credit-activity.json') },
+      '/api/monitor/credit-usage/usage-detail': { status: 200, body: fixture('credit-detail-model.json') },
+    });
+    const usage = await toolWithoutData.upstream.usage({
+      family: 'bigmodel',
+      auth: AUTH,
+      account: toolWithoutData.account,
+      range: '7d',
+      timeZone: 'UTC',
+    });
+    assert.deepEqual(usage.tools, []);
+    assert.equal(usage.series.length, 2);
+
+    const modelWithoutData = createHarness({
+      '/api/monitor/usage/model-usage': { status: 200, body: { code: 200, msg: '操作成功' } },
+      '/api/monitor/usage/tool-usage': { status: 200, body: fixture('usage-tool.json') },
+      '/api/monitor/credit-usage/activity': { status: 200, body: fixture('credit-activity.json') },
+      '/api/monitor/credit-usage/usage-detail': { status: 200, body: fixture('credit-detail-model.json') },
+    });
+    await assert.rejects(
+      modelWithoutData.upstream.usage({
+        family: 'bigmodel',
+        auth: AUTH,
+        account: modelWithoutData.account,
+        range: '7d',
+        timeZone: 'UTC',
+      }),
       (error) => {
         assert.equal(error.code, 'upstream_failed');
         return true;

@@ -328,8 +328,10 @@ export function BigModelUsagePage(props) {
       locale,
       now,
       quota,
+      subscription,
       family,
       overrides,
+      onRetry: refreshAll,
     }));
     if (resetBlock !== null) {
       sections.push(el(ResetCard, {

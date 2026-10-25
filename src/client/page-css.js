@@ -143,6 +143,19 @@ export const pageCss = `
   color: var(--dsw-alias-state-warn-primary);
 }
 
+/* Card hosts: named classes only carry layout constraints, not chrome. */
+.bmc-page-card,
+.bmc-page-usage-card {
+  min-width: 0;
+}
+
+/* Sidebar glyph root. */
+.bmc-page-icon {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
 /* Section scaffolding */
 .bmc-page-sections {
   display: flex;
@@ -164,11 +177,6 @@ export const pageCss = `
   line-height: 22px;
   font-weight: 500;
   color: var(--dsw-alias-label-primary);
-}
-.bmc-page-section-hint {
-  margin: 0;
-  font-size: 12px;
-  color: var(--dsw-alias-label-secondary);
 }
 .bmc-page-stack {
   display: flex;
@@ -210,11 +218,6 @@ export const pageCss = `
 }
 .bmc-page-quota-unit {
   font-size: 14px;
-  color: var(--dsw-alias-label-secondary);
-}
-.bmc-page-quota-caption {
-  margin: 0;
-  font-size: 12px;
   color: var(--dsw-alias-label-secondary);
 }
 .bmc-page-quota-bar {

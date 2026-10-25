@@ -232,6 +232,17 @@ const baseConfig = {
   usagePageUrl: '',
 };
 const loggedInAuth = { loggedIn: true, loginExpired: false, user: { name: 'Tester' }, account: null, family: 'bigmodel' };
+const inferenceStatus = (overrides = {}) => ({
+  enabled: true,
+  available: true,
+  ref: 'ZAI_CODING_CN_API_KEY',
+  family: 'bigmodel',
+  writtenAt: 1_700_000_000_000,
+  expiresAt: 1_700_000_360_000,
+  expiresInMs: 360_000,
+  error: null,
+  ...overrides,
+});
 const statusPayload = (overrides = {}) => ok({
   config: baseConfig,
   auth: loggedInAuth,
@@ -239,19 +250,30 @@ const statusPayload = (overrides = {}) => ok({
   ...overrides,
 });
 
-test('state.bootstrap loads config, auth and login once and notifies subscribers', async () => {
+test('state.bootstrap loads config, auth, inference and login once and notifies subscribers', async () => {
   const { state } = await freshState();
-  const mock = installFetch({ 'GET /bigmodelcn-codingplan/api/status': statusPayload() });
+  const mock = installFetch({ 'GET /bigmodelcn-codingplan/api/status': statusPayload({ inference: inferenceStatus() }) });
   try {
     let notifications = 0;
     const unsubscribe = state.subscribe(() => {
       notifications += 1;
     });
     const before = state.getSnapshot();
+    assert.equal(before.inference, null, 'inference starts null');
     const snapshot = await state.bootstrap();
     assert.equal(snapshot.config.family, 'bigmodel');
     assert.equal(snapshot.auth.loggedIn, true);
     assert.equal(snapshot.login.state, 'idle');
+    assert.deepEqual(snapshot.inference, {
+      enabled: true,
+      available: true,
+      ref: 'ZAI_CODING_CN_API_KEY',
+      family: 'bigmodel',
+      writtenAt: 1_700_000_000_000,
+      expiresAt: 1_700_000_360_000,
+      expiresInMs: 360_000,
+      error: null,
+    });
     assert.notEqual(state.getSnapshot(), before);
     assert.ok(notifications > 0, 'subscribers are notified');
     await state.bootstrap();
@@ -288,11 +310,12 @@ test('state maps transport failures to a typed network error', async () => {
 test('state maps host error envelopes and 401 login_expired clears auth', async () => {
   const { state } = await freshState();
   const mock = installFetch({
-    'GET /bigmodelcn-codingplan/api/status': statusPayload(),
+    'GET /bigmodelcn-codingplan/api/status': statusPayload({ inference: inferenceStatus() }),
     'GET /bigmodelcn-codingplan/api/overview': hostError(401, 'login_expired', 'expired'),
   });
   try {
     await state.bootstrap();
+    assert.equal(state.getSnapshot().inference.ref, 'ZAI_CODING_CN_API_KEY');
     await state.refreshOverview({ force: true });
     const snapshot = state.getSnapshot();
     assert.equal(snapshot.error.code, 'login_expired');
@@ -300,6 +323,7 @@ test('state maps host error envelopes and 401 login_expired clears auth', async 
     assert.equal(snapshot.auth.loginExpired, true);
     assert.equal(snapshot.auth.user.name, 'Tester');
     assert.equal(snapshot.login.state, 'expired');
+    assert.equal(snapshot.inference, null, 'an expired login clears the credential block');
     assert.equal(snapshot.loading.overview, false);
   } finally {
     mock.restore();
@@ -420,7 +444,7 @@ test('state loadReset caches, force reloads, and useReset reports success', asyn
 test('state saveConfig and logout update the snapshot', async () => {
   const { state } = await freshState();
   const mock = installFetch({
-    'GET /bigmodelcn-codingplan/api/status': statusPayload(),
+    'GET /bigmodelcn-codingplan/api/status': statusPayload({ inference: inferenceStatus() }),
     'POST /bigmodelcn-codingplan/api/config': ({ init }) => ok({ ...baseConfig, ...JSON.parse(init.body) }),
     'GET /bigmodelcn-codingplan/api/overview?force=1': ok({ generatedAt: 1, auth: loggedInAuth, error: null }),
     'POST /bigmodelcn-codingplan/api/logout': ok({ ok: true }),
@@ -440,6 +464,7 @@ test('state saveConfig and logout update the snapshot', async () => {
     assert.equal(signedOut.ok, true);
     assert.equal(state.getSnapshot().auth.loggedIn, false);
     assert.equal(state.getSnapshot().overview, null);
+    assert.equal(state.getSnapshot().inference, null);
     assert.equal(state.getSnapshot().login.state, 'idle');
   } finally {
     mock.restore();
@@ -463,6 +488,92 @@ test('state saveConfig applies the returned config and refreshes a signed-in ove
     await new Promise((resolve) => setTimeout(resolve, 10));
     assert.equal(mock.calls.filter((call) => call.path.endsWith('/overview')).length, 1, 'a signed-in save refreshes the overview');
     assert.equal(state.getSnapshot().overview.generatedAt, 1_700_000_000_123);
+  } finally {
+    mock.restore();
+    state.dispose();
+  }
+});
+
+test('state maps inference from every overview response and normalizes malformed fields', async () => {
+  const { state } = await freshState();
+  const overviews = [
+    ok({
+      generatedAt: 1_700_000_000_000,
+      auth: loggedInAuth,
+      inference: inferenceStatus({ ref: 'OVERVIEW_REF', family: 'zai', writtenAt: 11, expiresAt: 22, expiresInMs: 33 }),
+      error: null,
+    }),
+    ok({
+      generatedAt: 1_700_000_001_000,
+      auth: loggedInAuth,
+      inference: { enabled: 'yes', available: 1, ref: '', family: 7, writtenAt: 'x', expiresAt: Infinity, expiresInMs: null, error: { code: 'credential_write_failed', message: 'nope' } },
+      error: null,
+    }),
+    ok({ generatedAt: 1_700_000_002_000, auth: loggedInAuth, error: null }),
+  ];
+  const mock = installFetch({
+    'GET /bigmodelcn-codingplan/api/status': statusPayload({ inference: inferenceStatus() }),
+    'GET /bigmodelcn-codingplan/api/overview?force=1': () => overviews.shift(),
+  });
+  try {
+    await state.bootstrap();
+    await state.refreshOverview({ force: true });
+    assert.deepEqual(state.getSnapshot().inference, {
+      enabled: true,
+      available: true,
+      ref: 'OVERVIEW_REF',
+      family: 'zai',
+      writtenAt: 11,
+      expiresAt: 22,
+      expiresInMs: 33,
+      error: null,
+    }, 'overview replaces the status block');
+
+    await state.refreshOverview({ force: true });
+    assert.deepEqual(state.getSnapshot().inference, {
+      enabled: false,
+      available: false,
+      ref: null,
+      family: null,
+      writtenAt: null,
+      expiresAt: null,
+      expiresInMs: null,
+      error: 'credential_write_failed',
+    }, 'malformed fields normalize instead of leaking through');
+
+    await state.refreshOverview({ force: true });
+    assert.equal(state.getSnapshot().inference, null, 'an overview without inference clears it');
+  } finally {
+    mock.restore();
+    state.dispose();
+  }
+});
+
+test('state login ready refreshes inference from the post-login status and logout clears it', async () => {
+  const { state } = await freshState();
+  const statuses = [
+    statusPayload({ inference: inferenceStatus({ ref: 'BEFORE_LOGIN_REF' }) }),
+    statusPayload({ inference: inferenceStatus({ ref: 'POST_LOGIN_REF', writtenAt: 222 }) }),
+  ];
+  const mock = installFetch({
+    'GET /bigmodelcn-codingplan/api/status': () => (statuses.length > 0 ? statuses.shift() : statusPayload()),
+    'POST /bigmodelcn-codingplan/api/login': ok({ authorizeUrl: 'https://zcode.z.ai/authorize', pollIntervalMs: 1000 }),
+    'GET /bigmodelcn-codingplan/api/login/poll': ok({ state: 'ready' }),
+    'GET /bigmodelcn-codingplan/api/overview?force=1': hostError(502, 'upstream_failed', 'flaky'),
+    'POST /bigmodelcn-codingplan/api/logout': ok({ ok: true }),
+  });
+  try {
+    await state.bootstrap();
+    assert.equal(state.getSnapshot().inference.ref, 'BEFORE_LOGIN_REF');
+    await state.startLogin();
+    await state.pollLogin();
+    assert.equal(state.getSnapshot().login.state, 'idle');
+    assert.equal(state.getSnapshot().inference.ref, 'POST_LOGIN_REF', 'login-ready status refreshes inference');
+    assert.equal(state.getSnapshot().inference.writtenAt, 222);
+
+    const signedOut = await state.logout();
+    assert.equal(signedOut.ok, true);
+    assert.equal(state.getSnapshot().inference, null, 'logout clears inference');
   } finally {
     mock.restore();
     state.dispose();

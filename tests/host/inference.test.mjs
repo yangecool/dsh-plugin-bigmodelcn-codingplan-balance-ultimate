@@ -163,7 +163,7 @@ function build(options = {}) {
 
 test('reports the credentials seam as unavailable and writes nothing', async () => {
   const store = createMemoryStore({
-    auth: loggedInAuth({ inference: { ref: REF, writtenAt: 1, expiresAt: 2, previousSource: 'env' } }),
+    auth: loggedInAuth({ inference: { ref: REF, family: null, writtenAt: 1, expiresAt: 2, previousSource: 'env' } }),
   });
   const logger = createFakeLogger();
   const { inference, account } = build({ store, logger, getCredentials: () => undefined });
@@ -176,6 +176,7 @@ test('reports the credentials seam as unavailable and writes nothing', async () 
     enabled: true,
     available: false,
     ref: REF,
+    family: null,
     writtenAt: 1,
     expiresAt: 2,
     expiresInMs: 0,
@@ -210,6 +211,7 @@ test('does nothing while the user is not logged in', async () => {
     enabled: true,
     available: true,
     ref: null,
+    family: null,
     writtenAt: null,
     expiresAt: null,
     expiresInMs: null,
@@ -224,7 +226,9 @@ test('unsets the recorded reference when the feature is disabled', async () => {
   });
   const store = createMemoryStore({
     config: { inferenceEnabled: false },
-    auth: loggedInAuth({ inference: { ref: REF, writtenAt: 1, expiresAt: 2, previousSource: 'env' } }),
+    auth: loggedInAuth({
+      inference: { ref: REF, family: 'bigmodel', writtenAt: 1, expiresAt: 2, previousSource: 'env' },
+    }),
   });
   const { inference, account } = build({ store, credentials, config: { inferenceEnabled: false } });
 
@@ -237,6 +241,7 @@ test('unsets the recorded reference when the feature is disabled', async () => {
   const status = await inference.status();
   assert.equal(status.enabled, false);
   assert.equal(status.ref, null);
+  assert.equal(status.family, null);
   assert.equal(status.writtenAt, null);
   assert.equal(status.expiresAt, null);
   assert.equal(status.expiresInMs, null);
@@ -252,6 +257,7 @@ test('writes the project token and bookkeeping on the first sync', async () => {
   const auth = store.currentAuth();
   assert.deepEqual(auth.inference, {
     ref: REF,
+    family: 'bigmodel',
     writtenAt: clock.now(),
     expiresAt: material.expiresAt,
     previousSource: 'env',
@@ -262,6 +268,7 @@ test('writes the project token and bookkeeping on the first sync', async () => {
     enabled: true,
     available: true,
     ref: REF,
+    family: 'bigmodel',
     writtenAt: clock.now(),
     expiresAt: material.expiresAt,
     expiresInMs: material.expiresAt - clock.now(),
@@ -321,7 +328,7 @@ test('moves the credential when the configured reference changes', async () => {
   const store = createMemoryStore({
     config: { inferenceCredentialRef: OTHER_REF },
     auth: loggedInAuth({
-      inference: { ref: REF, writtenAt: 1, expiresAt: 9_999_999_999_999, previousSource: 'env' },
+      inference: { ref: REF, family: 'bigmodel', writtenAt: 1, expiresAt: 9_999_999_999_999, previousSource: 'env' },
     }),
   });
   const { inference, account } = build({ store, credentials });
@@ -333,9 +340,59 @@ test('moves the credential when the configured reference changes', async () => {
   assert.deepEqual(credentials.calls.set, [{ ref: OTHER_REF, value: TOKEN }]);
   const auth = store.currentAuth();
   assert.equal(auth.inference.ref, OTHER_REF);
+  assert.equal(auth.inference.family, 'bigmodel');
   assert.equal(auth.inference.previousSource, 'env');
   assert.equal(account.calls.length, 1);
   assert.equal((await inference.status()).ref, OTHER_REF);
+});
+
+test('rewrites the credential when the recorded family differs from the login', async () => {
+  const clock = createClock();
+  const store = createMemoryStore({
+    auth: loggedInAuth({
+      family: 'bigmodel',
+      inference: {
+        ref: REF,
+        family: 'zai',
+        writtenAt: 1,
+        expiresAt: clock.now() + 3_600_000,
+        previousSource: 'env',
+      },
+    }),
+  });
+  const material = { token: SECOND_TOKEN, expiresAt: clock.now() + 7_200_000, keyLocation: null };
+  const account = createFakeAccount({ material });
+  const credentials = createFakeCredentials({ sources: { [REF]: 'env' } });
+  const { inference } = build({ clock, store, credentials, account });
+
+  await inference.sync();
+
+  // The stored token belongs to the other origin: refresh even though the recorded expiry is fresh.
+  assert.equal(account.calls.length, 1);
+  assert.deepEqual(credentials.calls.unset, []);
+  assert.deepEqual(credentials.calls.set, [{ ref: REF, value: SECOND_TOKEN }]);
+  const auth = store.currentAuth();
+  assert.equal(auth.inference.family, 'bigmodel');
+  assert.equal(auth.inference.expiresAt, material.expiresAt);
+  const status = await inference.status();
+  assert.equal(status.family, 'bigmodel');
+  assert.equal(status.error, null);
+});
+
+test('rewrites bookkeeping recorded before family tracking', async () => {
+  const clock = createClock();
+  const store = createMemoryStore({
+    auth: loggedInAuth({
+      inference: { ref: REF, family: null, writtenAt: 1, expiresAt: clock.now() + 3_600_000, previousSource: 'env' },
+    }),
+  });
+  const { inference, account } = build({ clock, store });
+
+  await inference.sync();
+
+  assert.equal(account.calls.length, 1);
+  assert.equal(store.currentAuth().inference.family, 'bigmodel');
+  assert.equal((await inference.status()).family, 'bigmodel');
 });
 
 test('rejects with login_expired when the business APIs reject the login', async () => {
@@ -445,7 +502,9 @@ test('clear() drops the bookkeeping when the credential release fails', async ()
 
 test('clear() drops the bookkeeping without a credentials service', async () => {
   const store = createMemoryStore({
-    auth: loggedInAuth({ inference: { ref: REF, writtenAt: 1, expiresAt: 2, previousSource: 'env' } }),
+    auth: loggedInAuth({
+      inference: { ref: REF, family: 'bigmodel', writtenAt: 1, expiresAt: 2, previousSource: 'env' },
+    }),
   });
   const { inference } = build({ store, getCredentials: () => undefined });
 
@@ -580,6 +639,7 @@ test('persists the bookkeeping through the real auth store', async (t) => {
   const persisted = store.readAuth();
   assert.deepEqual(persisted.inference, {
     ref: REF,
+    family: 'bigmodel',
     writtenAt: clock.now(),
     expiresAt: material.expiresAt,
     previousSource: 'env',
@@ -587,6 +647,7 @@ test('persists the bookkeeping through the real auth store', async (t) => {
   assert.deepEqual(persisted.keyLocation, material.keyLocation);
   const raw = readFileSync(store.authPath(), 'utf8');
   assert.ok(raw.includes('"inference"'));
+  assert.ok(raw.includes('"family": "bigmodel"'));
   assert.ok(!raw.includes(TOKEN));
   assert.equal(credentials.values.get(REF), TOKEN);
 });

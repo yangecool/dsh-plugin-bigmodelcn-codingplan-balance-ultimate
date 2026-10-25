@@ -53,6 +53,11 @@ function h(...args) {
   return rt.h(...args);
 }
 
+/** Identity translate used only if a slot ever omits `t`; keeps render total. */
+function passthroughTranslate(key) {
+  return key;
+}
+
 /** @returns {boolean} whether `value` is a non-array object. */
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -103,11 +108,11 @@ function compactNumber(value, locale) {
   return typeof text === 'string' && text !== '' ? text : null;
 }
 
-/** @returns {string} remaining-percentage text (`72%`, `<1%`, or `--`). */
-function percentText(percent, locale) {
+/** @returns {string} remaining-percentage text (`72%`, `<1%`, or the dash placeholder). */
+function percentText(percent, locale, t) {
   const value = clampPercent(percent);
-  if (value === null) return '--';
-  if (value > 0 && value < 1) return '<1%';
+  if (value === null) return t('widget.value.dash');
+  if (value > 0 && value < 1) return t('widget.value.underOnePercent');
   return formatPercent(value, locale, 0);
 }
 
@@ -195,14 +200,16 @@ function nearestResetTextOf(limits, now, t) {
  * @returns {string} plan level, product name, or the localized fallback.
  */
 function planNameOf(overview, t) {
-  const quota = isRecord(overview) && isRecord(overview.quota) ? overview.quota : null;
-  const level = quota === null ? null : quota.level;
-  if (typeof level === 'string' && level.trim() !== '') return level.trim();
   const subscription = isRecord(overview) && isRecord(overview.subscription) ? overview.subscription : null;
   const productName = subscription !== null && typeof subscription.productName === 'string'
     ? subscription.productName.trim()
     : '';
   if (productName !== '') return productName;
+  const quota = isRecord(overview) && isRecord(overview.quota) ? overview.quota : null;
+  const level = quota === null || typeof quota.level !== 'string' ? '' : quota.level.trim();
+  if (level !== '') {
+    return t('widget.plan.level', { level: level.charAt(0).toUpperCase() + level.slice(1) });
+  }
   return t('widget.plan.fallback');
 }
 
@@ -438,8 +445,8 @@ function providerAllowed(config, gate) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Small presentational pieces (local so the widget cannot break when  */
-/* a shared primitive's markup changes).                              */
+/* Widget sections that compose the shared primitives and add the      */
+/* composer-specific layout (trigger rows, limit rows, stat cells).    */
 /* ------------------------------------------------------------------ */
 
 /** @returns {import('react').ReactElement} warning dot used for quiet error affordances. */
@@ -542,7 +549,7 @@ function LimitRow({ t, limit, bucket, now, locale }) {
   return h('div', { className: 'bmc-widget-limit' },
     h('div', { className: 'bmc-widget-limit-head' },
       h('span', { className: 'bmc-widget-limit-label' }, windowLabelOf(bucket, t)),
-      h('span', { className: `bmc-widget-limit-pct${textToneClass(percent)}` }, percentText(percent, locale)),
+      h('span', { className: `bmc-widget-limit-pct${textToneClass(percent)}` }, percentText(percent, locale, t)),
     ),
     h(Bar, { percent: percent ?? 0, tone: toneOf(percent), height: 6 }),
     h('div', { className: 'bmc-widget-limit-meta' },
@@ -554,10 +561,12 @@ function LimitRow({ t, limit, bucket, now, locale }) {
 
 /** @returns {string} display name of a tool/MCP or unclassified limit. */
 function toolNameOf(limit, bucket, t) {
-  const details = isRecord(limit) ? asArray(limit.usageDetails) : [];
-  for (const detail of details) {
-    if (isRecord(detail) && typeof detail.displayName === 'string' && detail.displayName.trim() !== '') {
-      return detail.displayName.trim();
+  if (bucket === 'tool') {
+    const details = isRecord(limit) ? asArray(limit.usageDetails) : [];
+    for (const detail of details) {
+      if (isRecord(detail) && typeof detail.displayName === 'string' && detail.displayName.trim() !== '') {
+        return detail.displayName.trim();
+      }
     }
   }
   return windowLabelOf(bucket, t);
@@ -570,7 +579,7 @@ function ToolRow({ t, limit, bucket, locale }) {
   return h('div', { className: 'bmc-widget-tool-row' },
     h('span', { className: 'bmc-widget-tool-label', title: name }, name),
     h(Bar, { percent: percent ?? 0, tone: toneOf(percent), height: 4 }),
-    h('span', { className: 'bmc-widget-tool-pct' }, percentText(percent, locale)),
+    h('span', { className: 'bmc-widget-tool-pct' }, percentText(percent, locale, t)),
   );
 }
 
@@ -729,10 +738,13 @@ function measurePosition(trigger) {
     const openUp = aboveSpace >= 200 || aboveSpace >= belowSpace;
     const available = Math.max(0, openUp ? aboveSpace : belowSpace);
     const maxHeight = Math.max(120, Math.min(viewportHeight * 0.7, POPOVER_MAX_HEIGHT, available));
+    const maxEdge = Math.max(VIEWPORT_MARGIN, viewportHeight - VIEWPORT_MARGIN);
     if (openUp) {
-      return { left, width, maxHeight, bottom: viewportHeight - rect.top + POPOVER_GAP };
+      const bottom = Math.min(Math.max(viewportHeight - rect.top + POPOVER_GAP, VIEWPORT_MARGIN), maxEdge);
+      return { left, width, maxHeight, bottom };
     }
-    return { left, width, maxHeight, top: rect.bottom + POPOVER_GAP };
+    const top = Math.min(Math.max(rect.bottom + POPOVER_GAP, VIEWPORT_MARGIN), maxEdge);
+    return { left, width, maxHeight, top };
   } catch {
     return null;
   }
@@ -824,11 +836,19 @@ function WidgetPopover({ t, snapshot, triggerRef, rootRef, onClose, locale }) {
       }
       onClose();
     };
-    document.addEventListener('pointerdown', handlePointerDown, true);
-    document.addEventListener('keydown', handleKeyDown, true);
+    try {
+      document.addEventListener('pointerdown', handlePointerDown, true);
+      document.addEventListener('keydown', handleKeyDown, true);
+    } catch {
+      return undefined;
+    }
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown, true);
-      document.removeEventListener('keydown', handleKeyDown, true);
+      try {
+        document.removeEventListener('pointerdown', handlePointerDown, true);
+        document.removeEventListener('keydown', handleKeyDown, true);
+      } catch {
+        /* the document is already gone with the host page */
+      }
     };
   }, [onClose, rootRef, triggerRef]);
 
@@ -936,8 +956,9 @@ function WidgetPopover({ t, snapshot, triggerRef, rootRef, onClose, locale }) {
  * @param props - slot props: localized `t` and the branded `sessionId`.
  * @returns {import('react').ReactElement|null} the trigger, or null when gated out.
  */
-export function ComposerIndicator({ t, sessionId }) {
+export function ComposerIndicator({ t: translate, sessionId }) {
   const React = rt.React;
+  const t = typeof translate === 'function' ? translate : passthroughTranslate;
   const snapValue = useSnapshot();
   const snapshot = isRecord(snapValue) ? snapValue : {};
   const { locale } = useLocalized();
@@ -1014,12 +1035,12 @@ export function ComposerIndicator({ t, sessionId }) {
     if (fiveHour === null && week === null) {
       content = h('span', { className: 'bmc-widget-unavailable' },
         h(WarningDot, null),
-        h('span', { className: 'bmc-widget-dash' }, '--'),
+        h('span', { className: 'bmc-widget-dash' }, t('widget.value.dash')),
       );
     } else {
       content = h('span', { className: 'bmc-widget-rows' },
-        triggerRow(fiveHour, 'fiveHour', locale),
-        triggerRow(week, 'week', locale),
+        triggerRow(fiveHour, 'fiveHour', locale, t),
+        triggerRow(week, 'week', locale, t),
       );
     }
   }
@@ -1049,14 +1070,22 @@ export function ComposerIndicator({ t, sessionId }) {
   );
 }
 
-/** @returns {import('react').ReactElement} one trigger meter row. */
-function triggerRow(percent, key, locale) {
+/**
+ * One trigger meter row. The composer trigger is a `<button>`, so its content
+ * stays phrasing-only: the 16x3 px meter is built from spans instead of the
+ * block-level shared `Bar`.
+ * @returns {import('react').ReactElement} trigger meter row.
+ */
+function triggerRow(percent, key, locale, t) {
   const value = clampPercent(percent);
   return h('span', { className: 'bmc-widget-row', key },
     h('span', { className: 'bmc-widget-track' },
-      h(Bar, { percent: value ?? 0, tone: toneOf(value), height: 3 }),
+      h('span', {
+        className: `bmc-widget-fill bmc-widget-fill-${toneOf(value)}`,
+        style: { width: `${value ?? 0}%` },
+      }),
     ),
-    h('span', { className: 'bmc-widget-pct' }, percentText(value, locale)),
+    h('span', { className: 'bmc-widget-pct' }, percentText(value, locale, t)),
   );
 }
 
@@ -1071,8 +1100,8 @@ function triggerTitleOf({ t, snapshot, overview, loggedIn, loginExpired, now, lo
   const week = remainingPercentOf(limits.week);
   if (fiveHour === null && week === null) return t('widget.trigger.unavailable');
   const plan = planNameOf(overview, t);
-  const fiveHourText = percentText(fiveHour, locale);
-  const weekText = percentText(week, locale);
+  const fiveHourText = percentText(fiveHour, locale, t);
+  const weekText = percentText(week, locale, t);
   const nearestReset = nearestResetTextOf(limits, now, t);
   if (nearestReset === null) {
     return t('widget.trigger.tooltipNoReset', { plan, fiveHour: fiveHourText, week: weekText });
@@ -1093,6 +1122,7 @@ export const indicatorDicts = {
     'widget.trigger.expiredTooltip': '登录已过期，重新登录后可查看额度',
     'widget.dialog.label': '编程套餐剩余额度',
     'widget.plan.fallback': 'GLM 编程套餐',
+    'widget.plan.level': 'GLM 编程套餐 {level}',
     'widget.family.bigmodel': 'BigModel',
     'widget.family.zai': 'Z.AI',
     'widget.family.other': '编程套餐',
@@ -1114,12 +1144,14 @@ export const indicatorDicts = {
     'widget.reset.in': '{time}后重置',
     'widget.reset.soon': '即将重置',
     'widget.reset.unknown': '重置时间未知',
-    'widget.stats.todayTokens': '今日 token',
+    'widget.stats.todayTokens': '今日 Token',
     'widget.stats.todayCalls': '今日调用',
     'widget.stats.fiveHourResets': '5 小时重置机会',
     'widget.stats.weekResets': '每周重置机会',
     'widget.value.unavailable': '—',
     'widget.value.loading': '…',
+    'widget.value.dash': '--',
+    'widget.value.underOnePercent': '<1%',
     'widget.plan.renews': '续费于 {date}',
     'widget.plan.expires': '到期于 {date}',
     'widget.updated': '更新于 {time}',
@@ -1145,6 +1177,7 @@ export const indicatorDicts = {
     'widget.trigger.expiredTooltip': 'Sign-in expired. Sign in again to see your quota.',
     'widget.dialog.label': 'Coding Plan remaining quota',
     'widget.plan.fallback': 'GLM Coding Plan',
+    'widget.plan.level': 'GLM Coding Plan {level}',
     'widget.family.bigmodel': 'BigModel',
     'widget.family.zai': 'Z.AI',
     'widget.family.other': 'Coding Plan',
@@ -1172,6 +1205,8 @@ export const indicatorDicts = {
     'widget.stats.weekResets': 'Weekly reset chances',
     'widget.value.unavailable': '—',
     'widget.value.loading': '…',
+    'widget.value.dash': '--',
+    'widget.value.underOnePercent': '<1%',
     'widget.plan.renews': 'Renews {date}',
     'widget.plan.expires': 'Expires {date}',
     'widget.updated': 'Updated {time}',
@@ -1246,12 +1281,35 @@ export const indicatorCss = `
 }
 
 .bmc-widget-track {
+  display: block;
   flex: none;
   width: 16px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-label-secondary) 24%, transparent);
 }
 
-.bmc-widget-track .bmc-bar {
-  background: color-mix(in srgb, var(--dsw-alias-label-secondary) 24%, transparent);
+.bmc-widget-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.bmc-widget-fill-brand {
+  background: var(--dsw-alias-brand-primary);
+}
+
+.bmc-widget-fill-warn {
+  background: var(--dsw-alias-state-warn-primary);
+}
+
+.bmc-widget-fill-error {
+  background: var(--dsw-alias-state-error-primary);
+}
+
+.bmc-widget-fill-idle {
+  background: var(--dsw-alias-state-idle-primary);
 }
 
 .bmc-widget-pct {

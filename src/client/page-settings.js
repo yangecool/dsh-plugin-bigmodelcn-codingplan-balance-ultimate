@@ -26,6 +26,23 @@ function el(type, props, ...children) {
   return typeof h === 'function' ? h(type, props, ...children) : null;
 }
 
+/**
+ * Refresh the overview once more after a short delay so the Host's
+ * fire-and-forget inference sync is reflected by the status payload.
+ * The timer only touches the singleton store, so no component state is updated
+ * after unmount.
+ * @returns nothing.
+ */
+function scheduleStatusRefresh() {
+  try {
+    setTimeout(() => {
+      void state.refreshOverview({ force: true });
+    }, 1500);
+  } catch {
+    // Environments without timers simply keep the first refresh result.
+  }
+}
+
 /** Read the value of a DOM input event without assuming the event shape. */
 function eventValue(event) {
   if (event !== null && typeof event === 'object' && event.target !== null && typeof event.target === 'object') {
@@ -224,6 +241,13 @@ export function InferenceCard(props) {
   if (config === null || config === undefined || typeof config !== 'object') {
     return null;
   }
+  // Older Hosts do not publish the inference contract at all; hiding the card
+  // avoids claiming a pending credential that will never be written.
+  if (inference === null || inference === undefined) {
+    if (config.inferenceEnabled === undefined && config.inferenceCredentialRef === undefined) {
+      return null;
+    }
+  }
 
   const enabled = config.inferenceEnabled !== false;
   const loggedIn = auth !== null && auth !== undefined && auth.loggedIn === true && auth.loginExpired !== true;
@@ -292,6 +316,7 @@ export function InferenceCard(props) {
       if (result !== null && typeof result === 'object' && result.ok === true) {
         setRefStatus('saved');
         void state.refreshOverview({ force: true });
+        scheduleStatusRefresh();
       } else {
         setRefStatus('failed');
       }
@@ -307,6 +332,7 @@ export function InferenceCard(props) {
       const result = await state.saveConfig({ inferenceEnabled: enabled !== true });
       if (result !== null && typeof result === 'object' && result.ok === true) {
         void state.refreshOverview({ force: true });
+        scheduleStatusRefresh();
       }
     } catch {
       // The toggle falls back to the persisted value on the next render.
