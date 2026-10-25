@@ -1,0 +1,51 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "success": true,
+  "data": {
+    "x_time": ["2026-07-01", "2026-07-02"],
+    "granularity": "daily",
+    "networkSearchCount": [2, 1],
+    "webReadMcpCount": [1, 0],
+    "zreadMcpCount": [0, 3],
+    "totalUsage": {
+      "totalNetworkSearchCount": 3,
+      "totalWebReadMcpCount": 1,
+      "totalZreadMcpCount": 3,
+      "totalSearchMcpCount": 4,
+      "toolSummaryList": [
+        { "toolCode": "network-search", "toolName": "联网搜索 MCP", "totalUsageCount": 3, "sortOrder": 1 },
+        { "toolCode": "web-reader", "toolName": "网页读取 MCP", "totalUsageCount": 1, "sortOrder": 2 },
+        { "toolCode": "zread", "toolName": "开源仓库 MCP", "totalUsageCount": 3, "sortOrder": 3 }
+      ]
+    },
+    "toolDataList": [
+      {
+        "toolCode": "network-search",
+        "toolName": "联网搜索 MCP",
+        "sortOrder": 1,
+        "usageCount": [2, 1],
+        "totalUsageCount": 3
+      },
+      {
+        "toolCode": "web-reader",
+        "toolName": "网页读取 MCP",
+        "sortOrder": 2,
+        "usageCount": [1, 0],
+        "totalUsageCount": 1
+      },
+      {
+        "toolCode": "zread",
+        "toolName": "开源仓库 MCP",
+        "sortOrder": 3,
+        "usageCount": [0, 3],
+        "totalUsageCount": 3
+      }
+    ],
+    "toolSummaryList": [
+      { "toolCode": "network-search", "toolName": "联网搜索 MCP", "totalUsageCount": 3, "sortOrder": 1 },
+      { "toolCode": "web-reader", "toolName": "网页读取 MCP", "totalUsageCount": 1, "sortOrder": 2 },
+      { "toolCode": "zread", "toolName": "开源仓库 MCP", "totalUsageCount": 3, "sortOrder": 3 }
+    ]
+  }
+}

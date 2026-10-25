@@ -1,0 +1,37 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "success": true,
+  "data": {
+    "x_time": ["2026-07-01", "2026-07-02"],
+    "granularity": "daily",
+    "modelCallCount": [3, 2],
+    "tokensUsage": [1230, 800],
+    "totalUsage": {
+      "totalModelCallCount": 5,
+      "totalTokensUsage": 2030,
+      "modelSummaryList": [
+        { "modelName": "glm-4.6", "totalTokens": 1400, "sortOrder": 1 },
+        { "modelName": "glm-4.5-air", "totalTokens": 630, "sortOrder": 2 }
+      ]
+    },
+    "modelDataList": [
+      {
+        "modelName": "glm-4.6",
+        "sortOrder": 1,
+        "tokensUsage": [900, 500],
+        "totalTokens": 1400
+      },
+      {
+        "modelName": "glm-4.5-air",
+        "sortOrder": 2,
+        "tokensUsage": [330, 300],
+        "totalTokens": 630
+      }
+    ],
+    "modelSummaryList": [
+      { "modelName": "glm-4.6", "totalTokens": 1400, "sortOrder": 1 },
+      { "modelName": "glm-4.5-air", "totalTokens": 630, "sortOrder": 2 }
+    ]
+  }
+}

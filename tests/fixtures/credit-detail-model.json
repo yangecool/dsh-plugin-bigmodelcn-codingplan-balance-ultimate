@@ -1,0 +1,49 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "success": true,
+  "data": {
+    "summary": {
+      "cacheHitRate": { "value": 0.893, "trend": 0.12 },
+      "totalCredits": { "value": 28.95, "trend": -0.2 },
+      "averageDailyCredits": { "value": 4.13, "trend": 0 }
+    },
+    "modelUsage": {
+      "xTime": ["2026-07-01", "2026-07-02"],
+      "modelDataList": [
+        {
+          "modelName": "glm-4.6",
+          "modelCode": "glm-4.6",
+          "sortOrder": 1,
+          "totalTokens": 220000,
+          "totalCredits": 18.5,
+          "totalCreditsUsage": [11.2, 7.3],
+          "cachedInputCreditsUsage": [7.68, 4.2],
+          "uncachedInputCreditsUsage": [2.63, 2.1],
+          "outputCreditsUsage": [0.89, 1.0],
+          "tokensUsage": [130000, 90000],
+          "totalTokensUsage": [130000, 90000],
+          "cachedInputTokensUsage": [90000, 60000],
+          "uncachedInputTokensUsage": [30000, 20000],
+          "outputTokensUsage": [10000, 10000]
+        },
+        {
+          "modelName": "glm-4.5-air",
+          "modelCode": "glm-4.5-air",
+          "sortOrder": 2,
+          "totalTokens": 130720,
+          "totalCredits": 10.45,
+          "totalCreditsUsage": [6.2, 4.25],
+          "cachedInputCreditsUsage": [4.1, 2.9],
+          "uncachedInputCreditsUsage": [1.6, 1.0],
+          "outputCreditsUsage": [0.5, 0.35],
+          "tokensUsage": [80720, 50000],
+          "totalTokensUsage": [80720, 50000],
+          "cachedInputTokensUsage": [55000, 34000],
+          "uncachedInputTokensUsage": [20000, 13000],
+          "outputTokensUsage": [5720, 3000]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "success": true,
+  "data": {
+    "level": "pro",
+    "limits": [
+      {
+        "type": "TOKENS_LIMIT",
+        "unit": 3,
+        "number": 5,
+        "usage": 600,
+        "currentValue": 150,
+        "remaining": 450,
+        "percentage": 25,
+        "nextResetTime": 1782881400000,
+        "usageDetails": []
+      },
+      {
+        "type": "TOKENS_LIMIT",
+        "unit": 6,
+        "number": 1,
+        "usage": 6000,
+        "currentValue": 2400,
+        "remaining": 3600,
+        "percentage": 40,
+        "nextResetTime": 1783400400000,
+        "usageDetails": []
+      },
+      {
+        "type": "TIME_LIMIT",
+        "unit": 5,
+        "number": 1,
+        "usage": 1000,
+        "currentValue": 120,
+        "remaining": 880,
+        "percentage": 12,
+        "nextResetTime": 1785500400000,
+        "usageDetails": [
+          { "modelCode": "search-prime", "displayName": "联网搜索 MCP", "usage": 50 },
+          { "modelCode": "web-reader", "displayName": "网页读取 MCP", "usage": 40 },
+          { "modelCode": "zread", "displayName": "开源仓库 MCP", "usage": 30 }
+        ]
+      }
+    ]
+  }
+}

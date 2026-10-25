@@ -1,0 +1,11 @@
+{
+  "code": 0,
+  "msg": "",
+  "data": {
+    "flow_id": "flow_01J8ZCODE0000000000000000",
+    "poll_token": "3f2a9c1d7e4b8a6f0c5d2e1b9a7f4c3d8e6b1a2f5c9d3e7b0a4f8c2d6e1b9a3f",
+    "authorize_url": "https://bigmodel.cn/login?appId=zcode&redirect=zcode%3A%2F%2Foauth%2Fcallback&state=9d1f3c7a5e2b8f4a6c0d3e7b1a9f5c2d",
+    "expires_at": 1783000000,
+    "poll_interval_sec": 2
+  }
+}

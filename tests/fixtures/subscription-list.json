@@ -1,0 +1,30 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "success": true,
+  "data": [
+    {
+      "productId": "glm-coding-pro",
+      "productName": "GLM Coding Pro",
+      "status": "VALID",
+      "inCurrentPeriod": true,
+      "purchaseTime": "2026-05-01 10:00:00",
+      "valid": "2026-05-01 10:00:00 ~ 2026-08-01 10:00:00",
+      "autoRenew": 1,
+      "currentRenewTime": "2026-07-01 10:00:00",
+      "nextRenewTime": "2026-08-01 10:00:00",
+      "billingCycle": "quarterly"
+    },
+    {
+      "productId": "glm-standard-token-package",
+      "productName": "GLM Token Package",
+      "status": "VALID",
+      "inCurrentPeriod": true,
+      "purchaseTime": "2026-06-01 00:00:00",
+      "valid": "2026-06-01 00:00:00 ~ 2026-09-01 00:00:00",
+      "autoRenew": false,
+      "nextRenewTime": "2026-09-01 00:00:00",
+      "billingCycle": "monthly"
+    }
+  ]
+}

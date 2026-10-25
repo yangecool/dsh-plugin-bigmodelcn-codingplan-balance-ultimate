@@ -1,0 +1,40 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "success": true,
+  "data": {
+    "customerNumber": "10000000001",
+    "customerName": "Alice",
+    "nickName": "alice",
+    "avatar": "https://example.com/avatar/alice.png",
+    "organizations": [
+      {
+        "organizationId": "org-personal-0001",
+        "organizationName": "默认机构",
+        "projects": [
+          {
+            "projectId": "proj-personal-0001",
+            "projectName": "默认项目",
+            "projectType": 1
+          },
+          {
+            "projectId": "proj-team-0001",
+            "projectName": "Team Project",
+            "projectType": 2
+          }
+        ]
+      },
+      {
+        "organizationId": "org-team-0002",
+        "organizationName": "Acme Team",
+        "projects": [
+          {
+            "projectId": "proj-team-0002",
+            "projectName": "Acme Coding Plan",
+            "projectType": 2
+          }
+        ]
+      }
+    ]
+  }
+}

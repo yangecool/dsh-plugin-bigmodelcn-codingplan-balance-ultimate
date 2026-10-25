@@ -1,0 +1,12 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "success": true,
+  "data": {
+    "enable": true,
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsInNpZ25fdHlwZSI6IlNJR04ifQ.eyJ0b2tlbl91c2UiOiJwcm9qZWN0X2FjY2VzcyIsImFwaV9rZXkiOiJhay1wZXJzb25hbC1jb2RpbmctcGxhbi0wMDAxIiwiZXhwIjoxNzgzMDAwNjAwfQ.c2FtcGxlLXNpZ25hdHVyZQ",
+    "tokenType": "Bearer",
+    "expiresIn": 600,
+    "expiresAt": 1783000600
+  }
+}

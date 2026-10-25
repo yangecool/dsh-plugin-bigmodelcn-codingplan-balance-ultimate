@@ -1,0 +1,41 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "success": true,
+  "data": {
+    "summary": {
+      "cacheHitRate": { "value": null, "trend": null },
+      "totalCredits": { "value": 1, "trend": 0.5 },
+      "averageDailyCredits": { "value": 0.2, "trend": 0.1 }
+    },
+    "mcpUsage": {
+      "xTime": ["2026-07-01", "2026-07-02"],
+      "mcpDataList": [
+        {
+          "mcpCode": "search-prime",
+          "mcpName": "联网搜索 MCP",
+          "toolCode": "search-prime",
+          "toolName": "联网搜索 MCP",
+          "sortOrder": 1,
+          "totalUsageCount": 3,
+          "totalCredits": 0.6,
+          "creditsUsage": [0.35, 0.25],
+          "mcpCallCount": [2, 1],
+          "usageCount": [2, 1]
+        },
+        {
+          "mcpCode": "zread",
+          "mcpName": "开源仓库 MCP",
+          "toolCode": "zread",
+          "toolName": "开源仓库 MCP",
+          "sortOrder": 2,
+          "totalUsageCount": 2,
+          "totalCredits": 0.4,
+          "creditsUsage": [0.2, 0.2],
+          "mcpCallCount": [1, 1],
+          "usageCount": [1, 1]
+        }
+      ]
+    }
+  }
+}

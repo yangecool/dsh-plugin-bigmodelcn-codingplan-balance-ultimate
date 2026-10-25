@@ -1,0 +1,17 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "success": true,
+  "data": [
+    {
+      "apiKey": "ak-personal-coding-plan-0001",
+      "name": "zcode-api-key",
+      "keyType": 1
+    },
+    {
+      "apiKey": "ak-team-coding-plan-0001",
+      "name": "zcode-team-api-key",
+      "keyType": 2
+    }
+  ]
+}

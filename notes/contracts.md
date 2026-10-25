@@ -19,7 +19,10 @@ lib/host/store.js     config + auth persistence (Lead, done)
 lib/host/oauth.js     ZCode CLI OAuth start/poll state machine (host-core)
 lib/host/account.js   customer info, API-key location, project access token, auth candidate probing (host-core)
 lib/host/upstream.js  BigModel quota/subscription/monitor/reset requests + pure normalizers (host-core)
-lib/host/snapshot.js  cached aggregations behind the routes (host-core)
+lib/host/snapshot.js  cached aggregations behind the routes (host-data)
+lib/host/inference.js automatic model-inference sign-in: writes the Coding Plan project
+                      token into the credential reference the pi-ai provider route resolves
+                      (host-inference)
 lib/host/routes.js    webServer route table (Lead, after host-core lands)
 lib/client.js         BUILT artifact: committed, `node scripts/build-client.mjs` (Lead)
 scripts/build-client.mjs  esbuild bundling of src/client -> lib/client.js (Lead)
@@ -64,6 +67,11 @@ createOAuth({ http, store, logger, now = () => Date.now() })
       -> { authorizeUrl, expiresAt, pollIntervalMs, family }
 
     async poll()
+      // Z.AI family only: after a ready poll, exchange the OAuth access token at
+      // POST https://api.z.ai/api/auth/z/login body {"token": <oauth token>} (no auth header)
+      // for a business JWT (data.access_token|data.accessToken, optional expires_in) and store
+      // that as accessToken. Failure -> {state:'failed', error:'zai_business_login_failed'}.
+      // BigModel family stores data.bigmodel.access_token raw.
       // no pending flow: store auth present ? {state:'ready'} : {state:'idle'}
       // now > pending.expiresAt: forget flow -> {state:'expired'}
       // now < pending.nextPollAt: {state:'pending'}
@@ -102,10 +110,18 @@ createAccount({ http, store, logger, now = () => Date.now() })
       // POST accessTokensPath, headers Authorization: Bearer <accessToken>, body
       // { clientType: ACCESS_TOKEN_CLIENT_TYPE, clientVersion: ACCESS_TOKEN_CLIENT_VERSION }
       -> { token, expiresAt }   // data.accessToken/data.access_token; min(data.expiresAt*1000, now+expiresIn*1000)
+    async getProjectMaterial({ family, auth, force })
+      // issueProjectToken over a cached keyLocation (ensureKeyLocation when missing), keeping one
+      // in-memory material cache keyed by family + access token. Refreshes when less than
+      // PROJECT_TOKEN_REFRESH_LEAD_MS remains. Returns { token, expiresAt, keyLocation }.
+      // Never log or persist the token outside the auth document's bookkeeping.
     async probeAuthorization({ family, auth, channel, request })
       // channel: 'monitor' | 'business'
       // request(authorizationHeaderValue) -> { status, body }
-      // Candidate order: raw accessToken, `Bearer <accessToken>`, raw project token, `Bearer <project token>`.
+      // Candidate order: raw project token (PAT), `Bearer <PAT>`, raw accessToken,
+      // `Bearer <accessToken>`. ZCode proves monitor/quota/usage and personal subscription
+      // reads are PAT-scoped (notes/zcode-api-spec.md §2.3/§2.4); the OAuth business token
+      // is only for customerInfo/api_keys and the reset X-Bigmodel-Authorization header.
       // The project token is issued lazily (ensureKeyLocation + issueProjectToken) only when the
       // access-token candidates are rejected with 401/403. Cache the winning candidate per
       // `${family}:${channel}` in memory. Return { authorization, response, kind }.
@@ -168,6 +184,7 @@ overview = {
   remaining: null | { percentage, nextResetTime },
   reset: null | { fiveHour: { available: [{expireAt}], latest: {usedAt}|null },
                   week: { available: [{expireAt}], latest: {usedAt}|null }, hasUnreadHistory },
+  inference: { enabled, available, ref, writtenAt, expiresAt, expiresInMs, error },
   stale: boolean, error: {code,message}|null,
 }
 
@@ -177,6 +194,43 @@ usage = { range, timeZone, generatedAt, granularity,
   series: [{ date|time, tokens, calls, mcpCalls? }],
   models: [{ modelCode, modelName, tokens, calls, credits? }],
   tools: [{ toolCode, toolName, calls, credits? }] }
+```
+
+### `lib/host/inference.js`
+
+Automatic model-inference sign-in. DSH's `llm-pi-ai` provider route `zai-coding-cn`
+points at `https://open.bigmodel.cn/api/coding/paas/v4` and resolves its key from the
+credential reference `ZAI_CODING_CN_API_KEY` through `ctx.credentials.resolve(ref)`
+on every call. The plugin therefore issues the Coding Plan project token after OAuth
+login and writes it into that reference, so model inference works with no pasted key,
+and refreshes it before expiry so the provider keeps working.
+
+```js
+createInference({ account, store, credentials, logger, now })
+  -> {
+    async sync({ force } = {})
+      // 1. credentials service is optional: () => ctx.get('credentials'); undefined -> status
+      //    {available:false, error:'credentials_unavailable'} and no writes.
+      // 2. config = store.readConfig(); disabled -> unset a previously written reference and stop.
+      // 3. auth = store.readAuth(); the reference is auth.inference.ref (bookkeeping in the
+      //    auth document). A changed configured reference unsets the old one first; a recorded
+      //    family different from auth.family means the token belongs to the other origin, so
+      //    rewrite it (status.family exposes the recorded family).
+      // 4. Skip upstream work when auth.inference.expiresAt - now > INFERENCE_REFRESH_LEAD_MS
+      //    and the reference is unchanged; otherwise account.getProjectMaterial({family, auth, force}).
+      // 5. credentials.set(ref, token) then store.writeAuth({ ...auth, keyLocation,
+      //    inference: { ref, family, writtenAt: now(), expiresAt, previousSource } }) where
+      //    previousSource is credentials.describe(ref).source before the first write
+      //    (bookkeeping only, never a value).
+      // 6. 401/403 -> HostError('login_expired', 401); other failures are recorded in
+      //    status().error and logged without tokens, never thrown from the timer path.
+      // A single in-flight promise per call; token values never logged.
+
+    async clear()     // credentials.unset(auth.inference.ref) when present, drop auth.inference,
+                      // used by logout and when the user disables the feature
+    async status()    // { enabled, available, ref, writtenAt, expiresAt, expiresInMs, error }
+    start()           // immediate sync + INFERENCE_SYNC_INTERVAL_MS timer; returns dispose
+  }
 ```
 
 ### `lib/host/snapshot.js`
@@ -190,10 +244,15 @@ createSnapshot({ store, oauth, account, upstream, logger, now })
     async usage({ range, timeZone, force })
     async reset({ force })
     async useReset({ resetType, idempotencyKey })
-    async loginStatus()       // delegates to oauth.poll()
-    async logout()
+    async loginStatus()       // delegates to oauth.poll(); on state 'ready' call inference.sync()
+    async logout()            // inference.clear() then oauth.logout(), then store.clearAuth()
   }
 ```
+
+`status()` and `overview()` include `inference: await inference.status()`; `overview()` also
+calls `inference.sync()` (fire-and-forget, never fails the overview) so a refreshed page or the
+auto-refresh tick renews the inference credential. `logout()` unsets the credential the login
+wrote and clears the auth document.
 
 Snapshot rules:
 - `store.readAuth()` is the only login source. Absent -> `{loggedIn:false}`.
@@ -206,12 +265,16 @@ Snapshot rules:
 ## Host route contract
 
 All routes are under `/bigmodelcn-codingplan` on the same origin as the Web GUI.
+They require an authenticated browser session: `registerRoutes` calls
+`ctx.get('connection')?.requestRejection(request)` first and answers 401/403 for
+untrusted peers (the raw Web server bypasses the connection carrier's gate, so the
+plugin restores it). If the optional `connection` service is absent, routes serve.
 Success: HTTP 200 `{ "data": <payload> }`. Failure: HTTP 4xx/5xx
 `{ "error": { "code": string, "message": string } }`.
 
 | Method + path | Body | Data |
 | --- | --- | --- |
-| `GET /api/status` | – | `{ config, auth: {loggedIn, loginExpired, user, account, family}, login: {state, authorizeUrl?, expiresAt?} }` |
+| `GET /api/status` | – | `{ config, auth: {loggedIn, loginExpired, user, account, family}, login: {state, authorizeUrl?, expiresAt?}, inference }` |
 | `POST /api/login` | `{ family? }` | `{ authorizeUrl, expiresAt, pollIntervalMs }` |
 | `GET /api/login/poll` | – | `{ state: 'idle'\|'pending'\|'ready'\|'failed'\|'expired', user?, error? }` |
 | `POST /api/logout` | – | `{ ok: true }` |
@@ -282,7 +345,8 @@ Available theme tokens: `--dsw-alias-bg-base`, `--dsw-alias-bg-layer-1`,
 
 ```js
 {
-  config: null | { family, refreshMinutes, providerIds, showIndicatorWhenLoggedOut, usagePageUrl },
+  config: null | { family, refreshMinutes, providerIds, showIndicatorWhenLoggedOut, usagePageUrl,
+                   inferenceEnabled, inferenceCredentialRef },
   auth: null | { loggedIn, loginExpired, user, account, family },
   overview: null | (overview from GET /api/overview),
   usage: null | (usage from GET /api/usage),

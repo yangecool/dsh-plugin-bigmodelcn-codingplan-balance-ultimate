@@ -1,0 +1,35 @@
+{
+  "code": 200,
+  "msg": "操作成功",
+  "success": true,
+  "data": {
+    "summary": {
+      "totalTokens": 350720,
+      "peakDailyTokens": 120000,
+      "peakDailyTokensDate": "2026-07-02",
+      "totalUsageDurationMs": 5400000,
+      "currentStreakDays": 2,
+      "longestStreakDays": 4
+    },
+    "series": [
+      {
+        "date": "2026-06-30",
+        "totalTokens": 82000,
+        "modelCallCount": 3,
+        "mcpCalls": 1
+      },
+      {
+        "date": "2026-07-01",
+        "totalTokens": 148720,
+        "modelCallCount": 4,
+        "mcpCalls": 2
+      },
+      {
+        "date": "2026-07-02",
+        "totalTokens": 120000,
+        "modelCallCount": 7,
+        "mcpCalls": 3
+      }
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "code": 0,
+  "msg": "",
+  "data": {
+    "status": "ready",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1X3pjb2RlXzAwMDEiLCJleHAiOjE3ODMwMDAwMDB9.c2FtcGxlLXpjb2RlLWp3dA",
+    "user": {
+      "user_id": "u_zcode_0001",
+      "email": "alice@example.com",
+      "name": "Alice",
+      "avatar": "https://example.com/avatar/alice.png"
+    },
+    "bigmodel": {
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1X3pjb2RlXzAwMDEiLCJ0eXAiOiJtYWFzIn0.c2FtcGxlLWJpZ21vZGVsLWJ1c2luZXNzLXRva2Vu",
+      "refresh_token": "rt_bigmodel_0001_5c2d9f7a1b3e"
+    },
+    "zai": {
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1X3pjb2RlXzAwMDEiLCJ0eXAiOiJ6YWkifQ.c2FtcGxlLXphaS1vYXV0aC10b2tlbg"
+    }
+  }
+}
