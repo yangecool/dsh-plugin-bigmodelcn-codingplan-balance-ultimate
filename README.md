@@ -91,7 +91,7 @@ Settings (`Settings` card on the page, or edit the JSON while DSH is stopped):
 {
   "family": "bigmodel",
   "refreshMinutes": 30,
-  "providerIds": [],
+  "providerIds": ["zai-coding-cn", "bigmodel-coding-cn"],
   "showIndicatorWhenLoggedOut": false,
   "usagePageUrl": "",
   "inferenceEnabled": true,
@@ -101,9 +101,10 @@ Settings (`Settings` card on the page, or edit the JSON while DSH is stopped):
 
 - `family` — `bigmodel` (bigmodel.cn) or `zai` (api.z.ai). Personal plans only.
 - `refreshMinutes` — automatic refresh of the quota overview, 1–1440.
-- `providerIds` — show the composer widget only for these model-provider ids;
-  the default empty list shows it for every provider once signed in. When the
-  model directory service is unavailable the widget stays visible.
+- `providerIds` — show the composer widget only for these model-provider ids
+  (default `zai-coding-cn`, `bigmodel-coding-cn`, i.e. the Coding Plan routes);
+  an empty list shows it for every provider. When the model directory service is
+  unavailable the widget stays visible.
 - `showIndicatorWhenLoggedOut` — render a quiet sign-in chip instead of hiding
   the widget while signed out.
 - `inferenceEnabled` / `inferenceCredentialRef` — the model-inference sign-in
@@ -250,7 +251,8 @@ dsh plugin --profile web add /插件目录的绝对路径
 
 - `family`：`bigmodel`（bigmodel.cn）或 `zai`（api.z.ai），仅支持个人套餐。
 - `refreshMinutes`：额度概览自动刷新间隔（1–1440 分钟）。
-- `providerIds`：仅在这些模型供应商下显示输入框浮窗；默认空数组表示登录后始终显示。
+- `providerIds`：仅在这些模型供应商下显示输入框浮窗（默认 `zai-coding-cn`、
+  `bigmodel-coding-cn`，即编程套餐路由）；空数组表示所有供应商都显示。
 - `showIndicatorWhenLoggedOut`：未登录时显示「登录」小徽标而不是隐藏浮窗。
 - `inferenceEnabled` / `inferenceCredentialRef`：模型推理自动登录开关与凭证引用名。
 
