@@ -1,10 +1,18 @@
 /**
  * Client entry of dsh-plugin-bigmodelcn-codingplan-balance-ultimate.
  *
- * Registers one locale namespace, one stylesheet, and three UI contributions:
+ * Registers one locale namespace, one stylesheet, and five UI contributions:
  *  - the sidebar icon of the dedicated usage page (`sidebar.panellist`),
  *  - the dedicated usage page itself (`main` keyed by PANEL_ID),
- *  - the composer remaining-quota trigger and popover (`conversation.input.right`).
+ *  - the BigModel account row on the Models settings page
+ *    (`settings.models.footer`),
+ *  - the provisioning note inside each coding-plan provider card
+ *    (`settings.models.provider-card`, keyed by the pi-ai settings namespace),
+ *  - the composer remaining-quota trigger and popover
+ *    (`conversation.input.right`).
+ *
+ * The usage page is a sidebar destination only: the Settings nav keeps the
+ * Models integration row and no duplicate usage section.
  */
 import { bindContext, bindReact } from './runtime.js';
 import { setTranslate, state } from './state.js';
@@ -86,15 +94,6 @@ function apply(ctx) {
   ctx.slots.inject('main', () => ctx.slots.register({
     name: 'main',
     key: PANEL_ID,
-    locale: LOCALE_NS,
-  }, BigModelUsagePage));
-  // Second entry point: the same page is reachable from Settings, so the
-  // feature is discoverable even when the sidebar rail is collapsed or hidden.
-  ctx.slots.inject('settings.section', () => ctx.slots.register({
-    name: 'settings.section',
-    id: 'bigmodelcn-usage',
-    order: 12,
-    label: () => ctx.locale.bind(LOCALE_NS)('app.nav'),
     locale: LOCALE_NS,
   }, BigModelUsagePage));
   // Models settings integration: the OAuth account row plus the per-provider

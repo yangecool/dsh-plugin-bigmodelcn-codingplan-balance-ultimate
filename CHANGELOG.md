@@ -19,7 +19,7 @@ Coding Plan accounts.
   the `zai-coding-cn` pi-ai route resolves (`ZAI_CODING_CN_API_KEY` by default),
   renewing it before expiry. Model inference works without pasting a key; a DSH
   restart re-signs it from the stored login.
-- **Dedicated usage statistics page** in the sidebar and in Settings:
+- **Dedicated usage statistics page** in the sidebar:
   subscription card, 5-hour / weekly / monthly-tool quota cards with remaining
   percentages and reset countdowns, per-window reset chances (with the reset
   action), range-switched usage statistics (today / 7 days / 30 days) with
@@ -56,8 +56,9 @@ Coding Plan accounts.
 
 - Replaced the pasted `authorization` header with OAuth login and automatic
   credential provisioning.
-- Settings moved from a standalone GLM settings section into the feature page
-  (the page is also a Settings section).
+- Settings moved from a standalone GLM settings section into the feature page;
+  the usage page itself is a sidebar destination only, so Settings keeps just
+  the Models account row instead of a duplicate usage section.
 - The composer indicator only appears for providers listed in `providerIds`
   (default `zai-coding-cn`, the shipped pi-ai route for BigModel Coding Plan)
   and stays hidden while signed out unless configured otherwise.

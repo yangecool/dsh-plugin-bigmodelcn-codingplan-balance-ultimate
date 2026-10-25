@@ -29,7 +29,7 @@ ZCode's Coding Plan capability set:
   floating card with the 5-hour and weekly remaining percentages, reset
   countdowns, today's tokens/calls, remaining reset chances, and shortcuts to
   the full page.
-- **Dedicated usage statistics page** (sidebar panel + Settings section):
+- **Dedicated usage statistics page** (sidebar panel):
   subscription card, quota cards per window, reset chances, range-switched
   usage statistics (tokens, calls, credits, cache hit ratio, streak, peak day),
   an inline SVG trend chart, per-model breakdown, and MCP/tool usage.
@@ -70,7 +70,7 @@ clearing the provider key in Settings → Models, which unsets that reference).
 
 ## First-time setup
 
-1. Open the sidebar page **BigModel usage** (or Settings → BigModel usage).
+1. Open the sidebar page **BigModel usage**.
 2. Click **Sign in to BigModel**. A new browser tab opens the BigModel login
    page; finish the login there.
 3. The plugin page switches to the dashboard automatically. Subscription,
@@ -222,7 +222,7 @@ DeepSeek Harness Web GUI 的 BigModel（智谱）编程套餐额度与用量插�
 - **输入框剩余额度浮窗**：输入框右侧两条紧凑额度条，点开后是浮窗卡片：5 小时 /
   每周剩余百分比、重置倒计时、今日 tokens 与调用次数、剩余重置机会，以及进入完整
   统计页的快捷入口。
-- **独立使用统计页**（侧边栏面板 + 设置分区）：套餐卡片、各时间窗口额度卡、重置
+- **独立使用统计页**（侧边栏面板）：套餐卡片、各时间窗口额度卡、重置
   机会、按范围切换的用量统计（tokens、调用、额度、缓存命中率、连续天数、峰值日）、
   内联 SVG 趋势图、按模型明细与 MCP / 工具用量。
 - **模型设置页集成**：设置 → 模型 底部新增「BigModel 账号」横栏（账号、登录状态、
@@ -237,7 +237,8 @@ DeepSeek Harness Web GUI 的 BigModel（智谱）编程套餐额度与用量插�
 dsh plugin --profile web add /插件目录的绝对路径
 ```
 
-安装后刷新 Web GUI 页面，侧边栏与设置中会出现「BigModel 用量」入口。
+安装后刷新 Web GUI 页面，侧边栏会出现「BigModel 用量」入口（设置里只保留
+「模型」页的 BigModel 账号横栏，不再重复放置用量页）。
 
 ## 卸载
 
@@ -255,7 +256,7 @@ DSH 没有卸载回调，插件无法在自身被移除后清理。若未先退�
 
 ## 首次使用
 
-1. 打开侧边栏「BigModel 用量」页面（或 设置 → BigModel 用量）。
+1. 打开侧边栏「BigModel 用量」页面。
 2. 点击「登录 BigModel」，在新标签页完成 BigModel 登录。
 3. 页面自动切换为数据面板，套餐、额度、重置机会与用量统计立即加载。
 4. 模型推理同时完成登录：插件把签发的编程套餐项目令牌写入「模型推理」设置中的
