@@ -772,15 +772,20 @@ function samePosition(previous, next) {
  */
 function WidgetPopover({ t, snapshot, triggerRef, rootRef, onClose, locale }) {
   const React = rt.React;
-  const [position, setPosition] = React.useState(() => measurePosition(triggerRef.current));
+  // Measured in a layout effect: during the first render the trigger ref is not
+  // attached yet, and a render-time measurement would paint at the fallback
+  // placement and jump once the observer fires.
+  const [position, setPosition] = React.useState(null);
+  const useLayoutEffect = typeof React.useLayoutEffect === 'function' ? React.useLayoutEffect : React.useEffect;
   const nowValue = useNow(TICK_MS);
   const now = typeof nowValue === 'number' && Number.isFinite(nowValue) ? nowValue : Date.now();
 
-  React.useEffect(() => {
+  useLayoutEffect(() => {
     const update = () => {
       const next = measurePosition(triggerRef.current);
       setPosition((previous) => (samePosition(previous, next) ? previous : next));
     };
+    update();
     try {
       window.addEventListener('resize', update);
       window.addEventListener('scroll', update, true);
@@ -923,8 +928,10 @@ function WidgetPopover({ t, snapshot, triggerRef, rootRef, onClose, locale }) {
     body.push(h(StatsSection, { key: 'stats', t, snapshot, overview, locale }));
   }
 
-  const fallbackPosition = { left: VIEWPORT_MARGIN, bottom: 96, width: POPOVER_WIDTH, maxHeight: 420 };
-  const style = position === null ? fallbackPosition : position;
+  // No placement yet (first layout effect has not run): render nothing rather
+  // than flash the popover at a fallback position.
+  if (position === null) return null;
+  const style = position;
   return h('div', {
     className: 'bmc-widget-popover',
     style,
@@ -1297,7 +1304,8 @@ export const indicatorCss = `
 }
 
 .bmc-widget-fill-brand {
-  background: var(--dsw-alias-brand-primary);
+  /* Data accent: --dsw-alias-brand-primary is the monochrome button color. */
+  background: var(--dsw-alias-state-business-primary, var(--dsw-alias-link));
 }
 
 .bmc-widget-fill-warn {

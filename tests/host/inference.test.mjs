@@ -80,13 +80,16 @@ function createMemoryStore({ config = {}, auth = null } = {}) {
   };
 }
 
-/** Fake credentials provider: source layers, stored values, and call recording. */
+/** Fake credentials provider: source layers, stored values, and ordered operation log. */
 function createFakeCredentials({ sources = {}, values = {} } = {}) {
   const sourceByRef = new Map(Object.entries(sources));
   const valueByRef = new Map(Object.entries(values));
   const calls = { describe: [], set: [], unset: [] };
+  /** Ordered credential mutations, used to prove which operation ran last. */
+  const operations = [];
   return {
     calls,
+    operations,
     values: valueByRef,
     async describe(ref) {
       calls.describe.push(ref);
@@ -98,11 +101,13 @@ function createFakeCredentials({ sources = {}, values = {} } = {}) {
     },
     async set(ref, value) {
       calls.set.push({ ref, value });
+      operations.push({ op: 'set', ref });
       valueByRef.set(ref, value);
       sourceByRef.set(ref, 'file');
     },
     async unset(ref) {
       calls.unset.push(ref);
+      operations.push({ op: 'unset', ref });
       valueByRef.delete(ref);
     },
   };
@@ -487,20 +492,29 @@ test('clear() unsets the written reference and drops the bookkeeping', async () 
   assert.deepEqual(credentials.calls.unset, [REF]);
 });
 
-test('clear() drops the bookkeeping when the credential release fails', async () => {
+test('clear() keeps the bookkeeping when the credential release fails, so a later logout retries', async () => {
   const { inference, store, credentials } = build();
   await inference.sync();
+  const release = credentials.unset.bind(credentials);
   credentials.unset = async () => {
     throw new Error('credentials document is not writable');
   };
 
   await inference.clear();
 
-  assert.equal(store.currentAuth().inference, null);
+  // The recorded reference stays the only pointer to the stored value.
+  assert.equal(store.currentAuth().inference.ref, REF);
   assert.equal((await inference.status()).error, 'internal_error');
+
+  credentials.unset = release;
+  await inference.releaseLogin();
+
+  assert.equal(store.currentAuth(), null);
+  assert.equal(credentials.values.has(REF), false);
+  assert.equal(credentials.operations.at(-1).op, 'unset');
 });
 
-test('clear() drops the bookkeeping without a credentials service', async () => {
+test('clear() keeps the bookkeeping without a credentials service', async () => {
   const store = createMemoryStore({
     auth: loggedInAuth({
       inference: { ref: REF, family: 'bigmodel', writtenAt: 1, expiresAt: 2, previousSource: 'env' },
@@ -510,7 +524,129 @@ test('clear() drops the bookkeeping without a credentials service', async () => 
 
   await inference.clear();
 
+  assert.equal(store.currentAuth().inference.ref, REF);
+  assert.equal((await inference.status()).available, false);
+});
+
+test('a disabled-feature sync keeps the bookkeeping when the release fails', async () => {
+  const credentials = createFakeCredentials({ sources: { [REF]: 'file' }, values: { [REF]: TOKEN } });
+  const store = createMemoryStore({
+    config: { inferenceEnabled: false },
+    auth: loggedInAuth({
+      inference: { ref: REF, family: 'bigmodel', writtenAt: 1, expiresAt: 2, previousSource: 'env' },
+    }),
+  });
+  const { inference, account } = build({ store, credentials, config: { inferenceEnabled: false } });
+  const release = credentials.unset.bind(credentials);
+  credentials.unset = async () => {
+    throw new Error('credentials document is not writable');
+  };
+
+  await inference.sync();
+
+  assert.equal(store.currentAuth().inference.ref, REF);
+  assert.equal((await inference.status()).error, 'internal_error');
+  assert.equal(credentials.values.has(REF), true);
+
+  credentials.unset = release;
+  await inference.sync();
+
   assert.equal(store.currentAuth().inference, null);
+  assert.equal(credentials.values.has(REF), false);
+  assert.equal(account.calls.length, 0);
+});
+
+test('releaseLogin() records a failed credential release without throwing', async () => {
+  const { inference, store, credentials } = build();
+  await inference.sync();
+  credentials.unset = async () => {
+    throw new Error('credentials document is not writable');
+  };
+
+  await inference.releaseLogin();
+
+  // The auth document is gone first by design, so a failed unset can only be
+  // surfaced through status; it must never take the logout path down.
+  assert.equal(store.currentAuth(), null);
+  assert.equal((await inference.status()).error, 'internal_error');
+});
+
+test('a renewal attempt starting during clear() cannot commit the credential', async () => {
+  const { inference, account, store, credentials } = build();
+  await inference.sync();
+  assert.equal(credentials.calls.set.length, 1);
+  assert.equal(account.calls.length, 1);
+
+  let releaseUnset;
+  const unsetGate = new Promise((resolve) => {
+    releaseUnset = resolve;
+  });
+  const unsetCredential = credentials.unset.bind(credentials);
+  credentials.unset = async (ref) => {
+    await unsetGate;
+    return unsetCredential(ref);
+  };
+
+  const clearing = inference.clear();
+  await flushAsync();
+  assert.deepEqual(credentials.calls.unset, []);
+
+  // The renewal tick starts after clear() raised its fence and bumped the generation.
+  const attempt = inference.sync({ force: true });
+  await attempt;
+  assert.equal(account.calls.length, 1, 'a fenced attempt must not issue a token');
+
+  releaseUnset();
+  await clearing;
+
+  assert.equal(credentials.calls.set.length, 1, 'no set may commit during cleanup');
+  assert.equal(credentials.operations.at(-1).op, 'unset', 'unset must be the last credential operation');
+  assert.equal(credentials.values.has(REF), false);
+  assert.equal(store.currentAuth().inference, null);
+});
+
+test('a renewal attempt starting during releaseLogin() cannot commit the credential', async () => {
+  const { inference, account, store, credentials } = build();
+  await inference.sync();
+  assert.equal(credentials.calls.set.length, 1);
+  assert.equal(account.calls.length, 1);
+
+  const order = [];
+  const clearAuth = store.clearAuth.bind(store);
+  store.clearAuth = () => {
+    order.push('clearAuth');
+    return clearAuth();
+  };
+  let releaseUnset;
+  const unsetGate = new Promise((resolve) => {
+    releaseUnset = resolve;
+  });
+  const unsetCredential = credentials.unset.bind(credentials);
+  credentials.unset = async (ref) => {
+    await unsetGate;
+    order.push('unset');
+    return unsetCredential(ref);
+  };
+
+  const releasing = inference.releaseLogin();
+  assert.equal(inference.releaseLogin(), releasing, 'concurrent logouts share one cleanup');
+  await flushAsync();
+  assert.deepEqual(credentials.calls.unset, []);
+  // The auth document must be gone before the credential reference is touched.
+  assert.deepEqual(order, ['clearAuth']);
+
+  const attempt = inference.sync({ force: true });
+  await attempt;
+  assert.equal(account.calls.length, 1, 'a fenced attempt must not issue a token');
+
+  releaseUnset();
+  await releasing;
+
+  assert.deepEqual(order, ['clearAuth', 'unset']);
+  assert.equal(credentials.calls.set.length, 1, 'no set may commit during cleanup');
+  assert.equal(credentials.operations.at(-1).op, 'unset', 'unset must be the last credential operation');
+  assert.equal(credentials.values.has(REF), false);
+  assert.equal(store.currentAuth(), null);
 });
 
 test('an attempt in flight when the user logs out does not write the credential', async () => {
@@ -527,19 +663,22 @@ test('an attempt in flight when the user logs out does not write the credential'
     },
   };
   const store = createMemoryStore({ auth: loggedInAuth() });
-  const credentials = createFakeCredentials();
+  const credentials = createFakeCredentials({ sources: { [REF]: 'env' } });
   const { inference } = build({ clock, account, store, credentials });
 
   const attempt = inference.sync();
   await flushAsync();
   assert.equal(account.calls.length, 1);
 
-  await inference.clear();
-  store.clearAuth();
+  // releaseLogin fences the attempt and waits for it before deleting the login.
+  const releasing = inference.releaseLogin();
+  await flushAsync();
   releaseMaterial({ token: TOKEN, expiresAt: clock.now() + 3_600_000, keyLocation: null });
   await attempt;
+  await releasing;
 
   assert.deepEqual(credentials.calls.set, []);
+  assert.equal(store.currentAuth(), null);
   const status = await inference.status();
   assert.equal(status.ref, null);
   assert.equal(status.error, null);
@@ -571,14 +710,59 @@ test('releases the credential when logout commits during the credential write', 
   await flushAsync();
   assert.deepEqual(credentials.calls.set, []);
 
-  await inference.clear();
-  store.clearAuth();
+  const releasing = inference.releaseLogin();
+  await flushAsync();
   releaseSet();
   await attempt;
+  await releasing;
 
   assert.deepEqual(credentials.calls.unset, [REF]);
   assert.equal(credentials.values.has(REF), false);
   assert.equal(store.currentAuth(), null);
+  assert.equal(credentials.operations.at(-1).op, 'unset');
+});
+
+test('disposing the renewal loop fences a credential commit in flight', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  const clock = createClock();
+  let releaseSet;
+  const setGate = new Promise((resolve) => {
+    releaseSet = resolve;
+  });
+  const credentials = createFakeCredentials({ sources: { [REF]: 'env' } });
+  const writeCredential = credentials.set.bind(credentials);
+  credentials.set = async (ref, value) => {
+    await setGate;
+    return writeCredential(ref, value);
+  };
+  const account = createFakeAccount({
+    material: { token: TOKEN, expiresAt: clock.now() + 3_600_000, keyLocation: null },
+  });
+  const store = createMemoryStore({ auth: loggedInAuth() });
+  const inference = createInference({
+    account,
+    store,
+    credentials: () => credentials,
+    logger: createFakeLogger(),
+    now: clock.now,
+  });
+
+  const dispose = inference.start();
+  await flushAsync();
+  assert.deepEqual(credentials.calls.set, []);
+
+  dispose();
+  releaseSet();
+  await flushAsync();
+
+  assert.deepEqual(credentials.calls.unset, [REF], 'the fenced write is released again');
+  assert.equal(credentials.values.has(REF), false);
+  assert.equal(store.currentAuth().inference, null);
+  assert.equal(credentials.operations.at(-1).op, 'unset');
+
+  const callsBefore = account.calls.length;
+  await inference.sync({ force: true });
+  assert.equal(account.calls.length, callsBefore, 'a disposed loop must not start attempts');
 });
 
 test('start() syncs immediately, renews on the interval, and stops on dispose', async (t) => {

@@ -53,9 +53,20 @@ running Web server.
 
 Uninstall:
 
+1. Sign out on the plugin page first. This unsets the model-inference credential
+   the plugin wrote (`ZAI_CODING_CN_API_KEY` by default) and deletes the login
+   file `$DSH_HOME/bigmodelcn-codingplan-auth.json`.
+2. Remove the bundle:
+
 ```sh
 dsh plugin --profile web remove dsh-plugin-bigmodelcn-codingplan-balance-ultimate
 ```
+
+DSH has no uninstall callback, so the plugin cannot clean up after its own
+removal. If you remove it without signing out first, delete
+`$DSH_HOME/bigmodelcn-codingplan-auth.json` and remove the stored
+`inferenceCredentialRef` value from the credential store (for example by
+clearing the provider key in Settings → Models, which unsets that reference).
 
 ## First-time setup
 
@@ -91,7 +102,7 @@ Settings (`Settings` card on the page, or edit the JSON while DSH is stopped):
 {
   "family": "bigmodel",
   "refreshMinutes": 30,
-  "providerIds": ["zai-coding-cn", "bigmodel-coding-cn"],
+  "providerIds": ["zai-coding-cn"],
   "showIndicatorWhenLoggedOut": false,
   "usagePageUrl": "",
   "inferenceEnabled": true,
@@ -101,10 +112,12 @@ Settings (`Settings` card on the page, or edit the JSON while DSH is stopped):
 
 - `family` — `bigmodel` (bigmodel.cn) or `zai` (api.z.ai). Personal plans only.
 - `refreshMinutes` — automatic refresh of the quota overview, 1–1440.
-- `providerIds` — show the composer widget only for these model-provider ids
-  (default `zai-coding-cn`, `bigmodel-coding-cn`, i.e. the Coding Plan routes);
-  an empty list shows it for every provider. When the model directory service is
-  unavailable the widget stays visible.
+- `providerIds` — show the composer widget only for these model-provider ids.
+  The default `zai-coding-cn` is the shipped pi-ai route for BigModel Coding
+  Plan (endpoint `open.bigmodel.cn/api/coding/paas/v4`); add ids of custom
+  routes if you declare one. An empty list shows the widget for every provider
+  (not recommended: DeepSeek sessions would show BigModel quota). When the model
+  directory service is unavailable the widget stays visible.
 - `showIndicatorWhenLoggedOut` — render a quiet sign-in chip instead of hiding
   the widget while signed out.
 - `inferenceEnabled` / `inferenceCredentialRef` — the model-inference sign-in
@@ -226,6 +239,20 @@ dsh plugin --profile web add /插件目录的绝对路径
 
 安装后刷新 Web GUI 页面，侧边栏与设置中会出现「BigModel 用量」入口。
 
+## 卸载
+
+1. 先在插件页面退出登录：这会删除插件写入的模型推理凭证（默认
+   `ZAI_CODING_CN_API_KEY`）与登录文件 `$DSH_HOME/bigmodelcn-codingplan-auth.json`。
+2. 再移除插件：
+
+```sh
+dsh plugin --profile web remove dsh-plugin-bigmodelcn-codingplan-balance-ultimate
+```
+
+DSH 没有卸载回调，插件无法在自身被移除后清理。若未先退出登录，请手动删除
+`$DSH_HOME/bigmodelcn-codingplan-auth.json`，并在凭据存储中移除
+`inferenceCredentialRef` 对应的值（例如在 设置 → 模型 中清除该供应商密钥）。
+
 ## 首次使用
 
 1. 打开侧边栏「BigModel 用量」页面（或 设置 → BigModel 用量）。
@@ -251,8 +278,10 @@ dsh plugin --profile web add /插件目录的绝对路径
 
 - `family`：`bigmodel`（bigmodel.cn）或 `zai`（api.z.ai），仅支持个人套餐。
 - `refreshMinutes`：额度概览自动刷新间隔（1–1440 分钟）。
-- `providerIds`：仅在这些模型供应商下显示输入框浮窗（默认 `zai-coding-cn`、
-  `bigmodel-coding-cn`，即编程套餐路由）；空数组表示所有供应商都显示。
+- `providerIds`：仅在这些模型供应商下显示输入框浮窗。默认 `zai-coding-cn`
+  是 DSH 内置的 BigModel 编程套餐路由（端点
+  `open.bigmodel.cn/api/coding/paas/v4`）；自建路由可追加自己的 id。空数组表示
+  所有供应商都显示（不建议：DeepSeek 会话也会显示 BigModel 额度）。
 - `showIndicatorWhenLoggedOut`：未登录时显示「登录」小徽标而不是隐藏浮窗。
 - `inferenceEnabled` / `inferenceCredentialRef`：模型推理自动登录开关与凭证引用名。
 

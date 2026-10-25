@@ -269,7 +269,7 @@ function createOAuthMock(options = {}) {
 
 /** Inference module mock with per-method overrides. */
 function createInferenceMock(overrides = {}) {
-  const calls = { sync: [], clear: 0, status: 0 };
+  const calls = { sync: [], clear: 0, releaseLogin: 0, status: 0 };
   return {
     calls,
     async sync(args) {
@@ -280,6 +280,11 @@ function createInferenceMock(overrides = {}) {
     async clear() {
       calls.clear += 1;
       if (overrides.clear) return overrides.clear(calls.clear);
+      return undefined;
+    },
+    async releaseLogin() {
+      calls.releaseLogin += 1;
+      if (overrides.releaseLogin) return overrides.releaseLogin(calls.releaseLogin);
       return undefined;
     },
     async status() {
@@ -359,7 +364,7 @@ describe('status', () => {
     assert.equal(status.auth.user.name, 'Alice');
     assert.equal(harness.store.state.auth, null);
     assert.equal(harness.store.clears, 1);
-    assert.equal(harness.inference.calls.clear, 1);
+    assert.equal(harness.inference.calls.releaseLogin, 1);
   });
 
   it('reports the pending OAuth flow', async () => {
@@ -457,6 +462,28 @@ describe('overview', () => {
     assert.equal(harness.upstream.calls.quota, 4);
     assert.equal(harness.account.calls.loadAccount.length, 3);
     assert.equal(harness.account.calls.loadAccount.at(-1).force, true);
+  });
+
+  it('kicks inference only on an overview rebuild, not on cached reads', async () => {
+    const harness = createHarness({ auth: createAuthDoc({ expiresAt: FIXED_NOW + 10 * HOUR }) });
+    await harness.snapshot.overview();
+    await flush();
+    assert.deepEqual(harness.inference.calls.sync, [{ force: false }]);
+
+    await harness.snapshot.overview();
+    await flush();
+    assert.equal(harness.inference.calls.sync.length, 1, 'a cached overview must not renew the credential');
+
+    harness.setNow(FIXED_NOW + 31 * SECOND);
+    await harness.snapshot.overview();
+    await flush();
+    assert.equal(harness.inference.calls.sync.length, 2);
+    assert.deepEqual(harness.inference.calls.sync.at(-1), { force: false });
+
+    await harness.snapshot.overview({ force: true });
+    await flush();
+    assert.equal(harness.inference.calls.sync.length, 3);
+    assert.deepEqual(harness.inference.calls.sync.at(-1), { force: true });
   });
 
   it('shares one in-flight request between concurrent overview calls', async () => {
@@ -579,7 +606,7 @@ describe('overview', () => {
     assert.equal(overview.auth.loginExpired, true);
     assert.equal(harness.store.state.auth, null);
     assert.equal(harness.store.clears, 1);
-    assert.equal(harness.inference.calls.clear, 1);
+    assert.equal(harness.inference.calls.releaseLogin, 1);
 
     const after = await harness.snapshot.overview();
     assert.equal(after.auth.loggedIn, false);
@@ -622,6 +649,34 @@ describe('overview', () => {
     assert.deepEqual(harness.store.state.auth.keyLocation, KEY_LOCATION);
     assert.equal(harness.account.calls.ensureKeyLocation.length, 1);
     assert.equal(harness.account.calls.ensureKeyLocation[0].accessToken, 'access-token');
+  });
+
+  it('does not recreate the auth document when logout commits during a rebuild', async () => {
+    let releaseLocation;
+    const locationGate = new Promise((resolve) => {
+      releaseLocation = resolve;
+    });
+    const harness = createHarness({
+      auth: createAuthDoc({ keyLocation: null }),
+      account: {
+        ensureKeyLocation: async () => {
+          await locationGate;
+          return { ...KEY_LOCATION };
+        },
+      },
+    });
+
+    const overview = harness.snapshot.overview({ force: true });
+    await flush();
+    const writesBeforeLogout = harness.store.writes.length;
+    await harness.snapshot.logout();
+    releaseLocation();
+    await overview;
+
+    // A rebuild from the deleted identity must not write its key location back:
+    // recreating the auth document would resurrect the logged-out tokens.
+    assert.equal(harness.store.state.auth, null);
+    assert.equal(harness.store.writes.length, writesBeforeLogout);
   });
 
   it('never lets a failing inference sync break the overview', async () => {
@@ -704,7 +759,7 @@ describe('usage', () => {
       return true;
     });
     assert.equal(harness.store.state.auth, null);
-    assert.equal(harness.inference.calls.clear, 1);
+    assert.equal(harness.inference.calls.releaseLogin, 1);
   });
 
   it('surfaces upstream failures for the inline retry', async () => {
@@ -889,7 +944,7 @@ describe('loginStatus and logout', () => {
     const harness = createHarness();
     await harness.snapshot.overview({ force: true });
     assert.deepEqual(await harness.snapshot.logout(), { ok: true });
-    assert.equal(harness.inference.calls.clear, 1);
+    assert.equal(harness.inference.calls.releaseLogin, 1);
     assert.equal(harness.oauth.calls.logout, 1);
     assert.equal(harness.store.state.auth, null);
 
@@ -901,6 +956,38 @@ describe('loginStatus and logout', () => {
     assert.equal(status.auth.loggedIn, false);
     assert.equal(status.auth.loginExpired, false);
     assert.equal(status.login.state, 'idle');
+  });
+
+  it('releases the inference credential through releaseLogin before OAuth login state is cleared', async () => {
+    const harness = createHarness();
+    const order = [];
+    const release = harness.inference.releaseLogin.bind(harness.inference);
+    harness.inference.releaseLogin = async () => {
+      order.push('releaseLogin');
+      await release();
+    };
+    const oauthLogout = harness.oauth.logout.bind(harness.oauth);
+    harness.oauth.logout = async () => {
+      order.push('oauth.logout');
+      await oauthLogout();
+    };
+
+    await harness.snapshot.logout();
+
+    assert.deepEqual(order, ['releaseLogin', 'oauth.logout']);
+    assert.equal(harness.store.state.auth, null);
+  });
+
+  it('falls back to clear() for an inference module without releaseLogin', async () => {
+    const inference = createInferenceMock();
+    inference.releaseLogin = undefined;
+    const harness = createHarness({ inference });
+
+    await harness.snapshot.logout();
+
+    assert.equal(harness.inference.calls.clear, 1);
+    assert.equal(harness.inference.calls.releaseLogin, 0);
+    assert.equal(harness.store.state.auth, null);
   });
 
   it('works without the optional inference module', async () => {

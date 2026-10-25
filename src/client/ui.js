@@ -279,8 +279,8 @@ export const CORE_CSS = `
 .bmc-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;line-height:1;white-space:nowrap;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease,opacity .15s ease}
 .bmc-btn:disabled{opacity:.55;cursor:not-allowed}
 .bmc-btn:focus-visible,.bmc-icon-btn:focus-visible,.bmc-segmented-item:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
-.bmc-btn-primary{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 14%,var(--dsw-alias-bg-layer-1));border-color:color-mix(in srgb,var(--dsw-alias-brand-primary) 45%,var(--dsw-alias-border-l1));color:var(--dsw-alias-brand-primary);font-weight:600}
-.bmc-btn-primary:hover:not(:disabled){background:color-mix(in srgb,var(--dsw-alias-brand-primary) 22%,var(--dsw-alias-bg-layer-1))}
+.bmc-btn-primary{background:var(--dsw-alias-button-primary-fill,var(--dsw-alias-brand-primary));border-color:transparent;color:var(--dsw-alias-label-primary-foreground);font-weight:500}
+.bmc-btn-primary:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover,var(--dsw-alias-brand-primary))}
 .bmc-btn-ghost{border-color:var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}
 .bmc-btn-ghost:hover:not(:disabled){background:var(--dsw-alias-bg-layer-2)}
 .bmc-btn-subtle{color:var(--dsw-alias-label-secondary)}
@@ -297,7 +297,7 @@ export const CORE_CSS = `
 @media (prefers-reduced-motion:reduce){.bmc-spinner{animation-duration:2.4s}.bmc-bar-fill{transition:none}}
 .bmc-bar{position:relative;width:100%;overflow:hidden;border-radius:999px;background:var(--dsw-alias-bg-layer-2)}
 .bmc-bar-fill{height:100%;border-radius:inherit;transition:width .3s ease}
-.bmc-bar-fill-brand{background:var(--dsw-alias-brand-primary)}
+.bmc-bar-fill-brand{background:var(--dsw-alias-state-business-primary,var(--dsw-alias-link))}
 .bmc-bar-fill-success{background:var(--dsw-alias-state-success-primary)}
 .bmc-bar-fill-warn{background:var(--dsw-alias-state-warn-primary)}
 .bmc-bar-fill-error{background:var(--dsw-alias-state-error-primary)}

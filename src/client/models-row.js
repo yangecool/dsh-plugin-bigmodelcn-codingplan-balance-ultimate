@@ -16,7 +16,7 @@
  */
 import { rt } from './runtime.js';
 import { state } from './state.js';
-import { useSnapshot, useNow } from './hooks.js';
+import { useLocalized, useNow, useSnapshot } from './hooks.js';
 import { Button, KeyValue, Notice, Spinner } from './ui.js';
 import { countdown, formatDateTime } from './format.js';
 
@@ -114,6 +114,7 @@ function inferenceCopy(t, inference, config, loggedIn) {
 export function ModelsAccountRow(props) {
   const { t } = props ?? {};
   const snap = useSnapshot();
+  const { locale } = useLocalized();
   const now = useNow(30_000);
   const [expanded, setExpanded] = rt.React.useState(false);
   const [confirmLogout, setConfirmLogout] = rt.React.useState(false);
@@ -197,7 +198,7 @@ export function ModelsAccountRow(props) {
     if (text(user?.email)) detailRows.push({ label: t('modelsRow.labelEmail'), value: user.email });
     detailRows.push({ label: t('modelsRow.labelFamily'), value: FAMILY_LABELS[family] ?? family });
     if (Number.isFinite(auth?.loggedInAt)) {
-      detailRows.push({ label: t('modelsRow.labelSignedInAt'), value: formatDateTime(auth.loggedInAt) });
+      detailRows.push({ label: t('modelsRow.labelSignedInAt'), value: formatDateTime(auth.loggedInAt, locale) });
     }
     detailRows.push({
       label: t('modelsRow.labelInference'),
@@ -273,8 +274,15 @@ export function ProviderCredentialNote(props) {
   const entry = record(provider);
   const providerId = text(entry?.provider) ? entry.provider : text(entry?.id) ? entry.id : '';
   if (providerId === '') return null;
-  const gated = Array.isArray(config.providerIds) ? config.providerIds : [];
-  if (gated.length > 0 && !gated.includes(providerId)) return null;
+  // Gate on the route's own identity, never on the composer widget's
+  // `providerIds` list: that list configures the widget only, and an empty one
+  // must not claim that every provider's API key is BigModel-provisioned.
+  const routeDefaultBase = text(entry?.defaultBaseURL) ? entry.defaultBaseURL : '';
+  const codingPlanRoute = providerId === 'zai-coding-cn'
+    || providerId === 'zai'
+    || routeDefaultBase.includes('open.bigmodel.cn/api/coding')
+    || routeDefaultBase.includes('api.z.ai/api/coding');
+  if (!codingPlanRoute) return null;
 
   const auth = record(snap?.auth);
   const loggedIn = auth?.loggedIn === true;
@@ -403,7 +411,7 @@ export const modelsRowCss = `
 .bmc-models-actions{display:inline-flex;align-items:center;gap:8px;margin-left:auto;flex:none}
 .bmc-models-pending{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--dsw-alias-label-secondary)}
 .bmc-models-waiting{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;line-height:20px;color:var(--dsw-alias-label-secondary)}
-.bmc-models-link{color:var(--dsw-alias-brand-primary);text-decoration:none}
+.bmc-models-link{color:var(--dsw-alias-link);text-decoration:none}
 .bmc-models-link:hover{text-decoration:underline}
 .bmc-models-details{display:flex;flex-direction:column;gap:10px;padding-top:10px;border-top:.5px solid var(--dsw-alias-border-l1)}
 .bmc-models-hint{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary)}
@@ -417,7 +425,7 @@ export const modelsRowCss = `
 .bmc-models-inference-idle{color:var(--dsw-alias-label-secondary)}
 .bmc-models-inference-expiry{color:var(--dsw-alias-label-secondary);font-size:12px}
 .bmc-models-note{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;padding-top:2px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary)}
-.bmc-models-inline-action{padding:0;border:none;background:none;font:inherit;font-size:12px;color:var(--dsw-alias-brand-primary);cursor:pointer}
+.bmc-models-inline-action{padding:0;border:none;background:none;font:inherit;font-size:12px;color:var(--dsw-alias-link);cursor:pointer}
 .bmc-models-inline-action:hover{text-decoration:underline}
 .bmc-models-note-error{flex-basis:100%;color:var(--dsw-alias-state-error-primary)}
 @media (max-width:560px){

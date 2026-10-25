@@ -47,7 +47,7 @@ Coding Plan accounts.
   inference-credential renewal.
 - ZCode API reference notes with source references (`notes/zcode-api-spec.md`)
   and sanitized response fixtures (`tests/fixtures/`).
-- 237 unit and integration tests: OAuth/account/PAT, upstream normalizers over
+- 239 unit and integration tests: OAuth/account/PAT, upstream normalizers over
   fixtures, snapshot caching and error mapping, inference bookkeeping, client
   formatters, and a Host integration suite that exercises the real route table
   with only the network replaced.
@@ -59,10 +59,16 @@ Coding Plan accounts.
 - Settings moved from a standalone GLM settings section into the feature page
   (the page is also a Settings section).
 - The composer indicator only appears for providers listed in `providerIds`
-  (default `zai-coding-cn`, `bigmodel-coding-cn`) and stays hidden while signed
-  out unless configured otherwise.
+  (default `zai-coding-cn`, the shipped pi-ai route for BigModel Coding Plan)
+  and stays hidden while signed out unless configured otherwise.
 - The token file format changed; previous `~/.dsh/glm-balance.json` values are
   not read, so sign in once after installing.
+
+### Security notes
+
+- Sign out before uninstalling: DSH has no uninstall callback, so a removed
+  plugin cannot unset the credential it provisioned or delete its login file.
+  See the uninstall runbook in the README.
 
 ### Known limits
 

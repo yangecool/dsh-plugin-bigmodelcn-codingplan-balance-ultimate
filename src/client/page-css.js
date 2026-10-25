@@ -333,7 +333,9 @@ export const pageCss = `
   cursor: default;
 }
 .bmc-page-chart-bar {
-  fill: var(--dsw-alias-brand-primary);
+  /* A data-series accent, not --dsw-alias-brand-primary: the alias brand color
+     is the monochrome primary button color (near black in light themes). */
+  fill: var(--dsw-alias-state-business-primary, var(--dsw-alias-link));
   opacity: 0.82;
   transition: opacity 120ms ease;
 }
@@ -439,7 +441,26 @@ export const pageCss = `
 .bmc-page-share-fill {
   height: 100%;
   border-radius: 2px;
-  background: var(--dsw-alias-brand-primary);
+  background: var(--dsw-alias-state-business-primary, var(--dsw-alias-link));
+}
+/* Categorical model palette: eight distinguishable series colors derived from
+   the theme's alias accent/semantic tokens (readable in light and dark). */
+.bmc-page-series-0{background:var(--dsw-alias-state-business-primary,var(--dsw-alias-link))}
+.bmc-page-series-1{background:var(--dsw-alias-state-success-primary)}
+.bmc-page-series-2{background:var(--dsw-alias-state-warn-primary)}
+.bmc-page-series-3{background:var(--dsw-alias-state-error-primary)}
+.bmc-page-series-4{background:color-mix(in srgb,var(--dsw-alias-state-business-primary,var(--dsw-alias-link)) 55%,var(--dsw-alias-state-success-primary))}
+.bmc-page-series-5{background:color-mix(in srgb,var(--dsw-alias-state-business-primary,var(--dsw-alias-link)) 55%,var(--dsw-alias-state-warn-primary))}
+.bmc-page-series-6{background:color-mix(in srgb,var(--dsw-alias-state-business-primary,var(--dsw-alias-link)) 50%,var(--dsw-alias-state-error-primary))}
+.bmc-page-series-7{background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 50%,var(--dsw-alias-state-warn-primary))}
+.bmc-page-series-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: baseline;
 }
 .bmc-page-tools {
   display: flex;
@@ -550,7 +571,7 @@ export const pageCss = `
   box-sizing: border-box;
 }
 .bmc-page-link {
-  color: var(--dsw-alias-brand-primary);
+  color: var(--dsw-alias-link);
   font-size: 12px;
   line-height: 18px;
   text-decoration: underline;

@@ -106,16 +106,14 @@ function apply(ctx) {
     order: 10,
     locale: LOCALE_NS,
   }, ModelsAccountRow));
-  // The pi-ai settings namespace is the Loader entry id; bundle-composed
-  // profiles may expose it with the composition's `include:` prefix, so both
-  // keys are registered. A key no card dispatches simply never renders.
-  for (const providerCardKey of ['llm-pi-ai', 'include:llm-pi-ai']) {
-    ctx.slots.inject('settings.models.provider-card', () => ctx.slots.register({
-      name: 'settings.models.provider-card',
-      key: providerCardKey,
-      locale: LOCALE_NS,
-    }, ProviderCredentialNote));
-  }
+  // The pi-ai settings namespace is the Loader entry id (`llm-pi-ai`): the
+  // directory entries carry it as `settingsNs`, and the Models page dispatches
+  // this keyed slot with `entryKey = settingsNs`.
+  ctx.slots.inject('settings.models.provider-card', () => ctx.slots.register({
+    name: 'settings.models.provider-card',
+    key: 'llm-pi-ai',
+    locale: LOCALE_NS,
+  }, ProviderCredentialNote));
   ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
     name: 'conversation.input.right',
     id: 'bigmodelcn-balance',

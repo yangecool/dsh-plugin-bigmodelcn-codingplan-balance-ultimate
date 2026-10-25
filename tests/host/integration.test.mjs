@@ -302,6 +302,22 @@ test('overview reports the logged-out state without upstream calls', async () =>
   harnessRef.dispose();
 });
 
+test('an oversized request body is answered with 413 instead of a reset stream', async () => {
+  const harnessRef = harness({ fetchImpl: async () => textResponse(401, 'no') });
+  const handler = harnessRef.routes.get(`${ROUTE_PREFIX}/api/config`);
+  assert.ok(handler, 'config route is registered');
+  const body = Buffer.alloc(128 * 1024, 0x61);
+  const request = Readable.from([body]);
+  request.method = 'POST';
+  request.url = `${ROUTE_PREFIX}/api/config`;
+  const response = responseRecorder();
+  await handler(request, response);
+  const recorded = await response.done;
+  assert.equal(recorded.status, 413);
+  assert.equal(JSON.parse(recorded.body).error.code, 'invalid_request');
+  harnessRef.dispose();
+});
+
 test('host entry wires every route under the plugin prefix and disposes them', async () => {
   const routes = new Map();
   const disposers = [];

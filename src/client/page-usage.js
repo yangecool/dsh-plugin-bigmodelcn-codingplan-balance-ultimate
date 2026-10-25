@@ -259,14 +259,16 @@ export function UsageModelTable({ t, locale, models, totalTokens }) {
         className: 'bmc-page-table-row',
       },
       el('div', { className: 'bmc-page-table-name' },
-        el('span', { className: 'bmc-page-table-name-text', title: name }, name),
+        el('div', { className: 'bmc-page-table-name-line' },
+          el('span', { className: `bmc-page-series-dot bmc-page-series-${index % 8}`, 'aria-hidden': 'true' }),
+          el('span', { className: 'bmc-page-table-name-text', title: name }, name)),
         el('div', {
           className: 'bmc-page-share',
           role: 'img',
           'aria-label': `${t('usage.shareLabel')} ${formatPercentValue(share, locale)}`,
         },
         el('div', {
-          className: 'bmc-page-share-fill',
+          className: `bmc-page-share-fill bmc-page-series-${index % 8}`,
           style: { width: `${share}%` },
         }))),
       el('span', { className: 'bmc-page-table-num' }, formatCompact(model.tokens, locale)),
