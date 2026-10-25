@@ -571,6 +571,57 @@ test('releaseLogin() records a failed credential release without throwing', asyn
   assert.equal((await inference.status()).error, 'internal_error');
 });
 
+test('releaseLogin() retries a failed release on the next cleanup', async () => {
+  const { inference, store, credentials } = build();
+  await inference.sync();
+  const release = credentials.unset.bind(credentials);
+  credentials.unset = async () => {
+    throw new Error('credentials document is not writable');
+  };
+
+  await inference.releaseLogin();
+
+  // The auth document is gone, but the failed reference is remembered.
+  assert.equal(store.currentAuth(), null);
+  assert.equal(credentials.values.has(REF), true);
+  assert.equal((await inference.status()).error, 'internal_error');
+
+  credentials.unset = release;
+  await inference.releaseLogin();
+
+  assert.equal(credentials.values.has(REF), false);
+  assert.equal(credentials.operations.at(-1).op, 'unset');
+  assert.equal((await inference.status()).error, null);
+});
+
+test('releaseLogin() remembers a reference that has no seam yet and retries later', async () => {
+  const clock = createClock();
+  const credentials = createFakeCredentials({ sources: { [REF]: 'file' }, values: { [REF]: TOKEN } });
+  const store = createMemoryStore({
+    auth: loggedInAuth({
+      inference: { ref: REF, family: 'bigmodel', writtenAt: 1, expiresAt: 2, previousSource: 'env' },
+    }),
+  });
+  let service;
+  const account = createFakeAccount({ material: { token: TOKEN, expiresAt: clock.now() + 3_600_000, keyLocation: null } });
+  const inference = createInference({
+    account,
+    store,
+    credentials: () => service,
+    logger: createFakeLogger(),
+    now: clock.now,
+  });
+
+  await inference.releaseLogin();
+  assert.equal(store.currentAuth(), null);
+  assert.equal(credentials.values.has(REF), true);
+
+  service = credentials;
+  await inference.releaseLogin();
+  assert.equal(credentials.values.has(REF), false);
+  assert.equal(credentials.operations.at(-1).op, 'unset');
+});
+
 test('a renewal attempt starting during clear() cannot commit the credential', async () => {
   const { inference, account, store, credentials } = build();
   await inference.sync();

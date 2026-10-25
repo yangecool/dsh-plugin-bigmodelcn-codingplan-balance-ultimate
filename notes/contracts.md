@@ -229,7 +229,13 @@ createInference({ account, store, credentials, logger, now })
       // A single in-flight promise per call; token values never logged.
 
     async clear()     // credentials.unset(auth.inference.ref) when present, drop auth.inference,
-                      // used by logout and when the user disables the feature
+                      // used when the user disables the feature; keeps the auth document
+    async releaseLogin()
+                      // atomic logout cleanup used by snapshot.logout()/clearLoginState():
+                      // fence new attempts synchronously, await the in-flight attempt, then
+                      // store.clearAuth() BEFORE credentials.unset(ref) so nothing can recreate
+                      // an orphaned credential; concurrent releases share one promise; a failed
+                      // unset is remembered in memory for the next cleanup
     async status()    // { enabled, available, ref, writtenAt, expiresAt, expiresInMs, error }
     start()           // immediate sync + INFERENCE_SYNC_INTERVAL_MS timer; returns dispose
   }
@@ -250,6 +256,10 @@ createSnapshot({ store, oauth, account, upstream, logger, now })
     async logout()            // inference.clear() then oauth.logout(), then store.clearAuth()
   }
 ```
+
+`logout()`/`clearLoginState()` call `inference.releaseLogin()` (falls back to `clear()` for
+older modules) before the OAuth logout so the credential and the auth document are released
+atomically; `clear()` remains the disable-feature path and keeps the auth document.
 
 `status()` and `overview()` include `inference: await inference.status()`; `overview()` also
 calls `inference.sync()` (fire-and-forget, never fails the overview) so a refreshed page or the
