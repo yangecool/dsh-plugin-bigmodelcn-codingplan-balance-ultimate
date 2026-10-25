@@ -12,6 +12,12 @@ import { coreDicts } from './dicts-core.js';
 import { CORE_CSS } from './ui.js';
 import { BigModelUsagePage, PanelIcon, pageCss, pageDicts } from './page.js';
 import { ComposerIndicator, indicatorCss, indicatorDicts } from './indicator.js';
+import {
+  ModelsAccountRow,
+  ProviderCredentialNote,
+  modelsRowCss,
+  modelsRowDicts,
+} from './models-row.js';
 
 const PACKAGE_ID = 'dsh-plugin-bigmodelcn-codingplan-balance-ultimate';
 const PANEL_ID = 'bigmodelcn-usage';
@@ -21,8 +27,8 @@ const STYLE_TAG_ID = `${PACKAGE_ID}-styles`;
 /** Merge the per-module dictionaries into the two shipped locales. */
 function mergeDicts() {
   return {
-    zh: { ...coreDicts.zh, ...pageDicts.zh, ...indicatorDicts.zh },
-    en: { ...coreDicts.en, ...pageDicts.en, ...indicatorDicts.en },
+    zh: { ...coreDicts.zh, ...pageDicts.zh, ...indicatorDicts.zh, ...modelsRowDicts.zh },
+    en: { ...coreDicts.en, ...pageDicts.en, ...indicatorDicts.en, ...modelsRowDicts.en },
   };
 }
 
@@ -38,7 +44,7 @@ function insertStyles() {
   const tag = document.createElement('style');
   tag.id = STYLE_TAG_ID;
   tag.dataset.plugin = PACKAGE_ID;
-  tag.textContent = `${CORE_CSS}\n${pageCss}\n${indicatorCss}`;
+  tag.textContent = `${CORE_CSS}\n${pageCss}\n${indicatorCss}\n${modelsRowCss}`;
   document.head.appendChild(tag);
   return () => {
     tag.remove();
@@ -91,6 +97,25 @@ function apply(ctx) {
     label: () => ctx.locale.bind(LOCALE_NS)('app.nav'),
     locale: LOCALE_NS,
   }, BigModelUsagePage));
+  // Models settings integration: the OAuth account row plus the per-provider
+  // note that its API key is provisioned automatically. The keyed provider-card
+  // seat is dispatched with the pi-ai settings namespace for every pi-ai route.
+  ctx.slots.inject('settings.models.footer', () => ctx.slots.register({
+    name: 'settings.models.footer',
+    id: 'bigmodelcn-account',
+    order: 10,
+    locale: LOCALE_NS,
+  }, ModelsAccountRow));
+  // The pi-ai settings namespace is the Loader entry id; bundle-composed
+  // profiles may expose it with the composition's `include:` prefix, so both
+  // keys are registered. A key no card dispatches simply never renders.
+  for (const providerCardKey of ['llm-pi-ai', 'include:llm-pi-ai']) {
+    ctx.slots.inject('settings.models.provider-card', () => ctx.slots.register({
+      name: 'settings.models.provider-card',
+      key: providerCardKey,
+      locale: LOCALE_NS,
+    }, ProviderCredentialNote));
+  }
   ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
     name: 'conversation.input.right',
     id: 'bigmodelcn-balance',

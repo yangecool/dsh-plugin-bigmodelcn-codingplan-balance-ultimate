@@ -33,6 +33,11 @@ ZCode's Coding Plan capability set:
   subscription card, quota cards per window, reset chances, range-switched
   usage statistics (tokens, calls, credits, cache hit ratio, streak, peak day),
   an inline SVG trend chart, per-model breakdown, and MCP/tool usage.
+- **Models settings integration**: an account row at the bottom of Settings →
+  Models (identity, sign-in status, edit/sign-out, account and credential
+  details) plus a note inside each coding-plan provider card saying its API key
+  is provisioned by the OAuth sign-in — matching how the built-in account row
+  presents itself.
 - **Own settings** on the page: provider family, refresh interval, provider gate
   list, inference credential reference.
 
@@ -61,7 +66,9 @@ dsh plugin --profile web remove dsh-plugin-bigmodelcn-codingplan-balance-ultimat
    quota windows, reset chances, and usage statistics load immediately.
 4. Model inference is signed in at the same time: the plugin writes the issued
    Coding Plan project token into the credential reference configured under
-   **Model inference** (default `ZAI_CODING_CN_API_KEY`). The shipped
+   **Model inference** (default `ZAI_CODING_CN_API_KEY`). Settings → Models now
+   shows a **BigModel account** row with the sign-in state and a note inside the
+   coding-plan provider card. The shipped
    `zai-coding-cn` provider route (endpoint
    `https://open.bigmodel.cn/api/coding/paas/v4`) resolves that reference on
    every call, so choosing one of its models now works without a pasted key.
@@ -204,6 +211,9 @@ DeepSeek Harness Web GUI 的 BigModel（智谱）编程套餐额度与用量插�
 - **独立使用统计页**（侧边栏面板 + 设置分区）：套餐卡片、各时间窗口额度卡、重置
   机会、按范围切换的用量统计（tokens、调用、额度、缓存命中率、连续天数、峰值日）、
   内联 SVG 趋势图、按模型明细与 MCP / 工具用量。
+- **模型设置页集成**：设置 → 模型 底部新增「BigModel 账号」横栏（账号、登录状态、
+  编辑/退出登录、凭证详情），并在编程套餐供应商卡片内提示：API 密钥由 OAuth 登录
+  自动提供，无需手动粘贴。
 - **页面内设置**：服务族（BigModel / Z.AI）、自动刷新间隔、供应商显示范围、模型
   推理凭证引用。
 

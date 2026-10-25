@@ -35,6 +35,8 @@ src/client/ui.js      shared primitives: Card/Button/Bar/Stat/Notice/Segmented/S
 src/client/icons.js   SVG path data (Lead)
 src/client/page.js    dedicated usage-statistics page + sidebar icon + its dicts/css (client-page)
 src/client/indicator.js composer remaining-quota trigger + popover + its dicts/css (client-widget)
+src/client/models-row.js Models settings page: BigModel account row (settings.models.footer) plus the
+                      per-provider credential note (settings.models.provider-card keyed `llm-pi-ai`)
 tests/host/*.test.mjs node:test unit tests with mocked fetch (host-core)
 tests/client/*.mjs    pure helper tests (Lead/verifier)
 notes/**              research notes (zcode-recon)
@@ -304,7 +306,10 @@ through `require('react')` and binds it with `bindReact(React)`.
 3. `sidebar.panellist` list entry `id: PANEL_ID`, `order: 20`, `label: () => translate('app.nav')`, component `PanelIcon`;
 4. `main` keyed entry `key: PANEL_ID`, `locale: LOCALE_NS`, component `BigModelUsagePage`;
 5. `conversation.input.right` list entry `id: 'bigmodelcn-balance'`, `order: 20`, `locale: LOCALE_NS`, component `ComposerIndicator`;
-6. a 30-second ticker calling `state.tick()` (auto refresh + countdown notifications).
+6. a 30-second ticker calling `state.tick()` (auto refresh + countdown notifications);
+7. `settings.models.footer` list entry `id: 'bigmodelcn-account'`, `order: 10`, component `ModelsAccountRow`;
+8. `settings.models.provider-card` keyed entries under `llm-pi-ai` (and the composition-prefixed
+   `include:llm-pi-ai` alias) rendering `ProviderCredentialNote` inside every pi-ai provider card.
 
 Slot component props available to write:
 - `main`/page: `t` (from `locale`), no session binding; use `state`/hooks.

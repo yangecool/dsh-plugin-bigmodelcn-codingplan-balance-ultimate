@@ -28,6 +28,11 @@ Coding Plan accounts.
   row open a floating card with quota bars, reset countdowns, today's
   tokens/calls, remaining reset chances, a refresh action, and links to the full
   page and the BigModel usage console.
+- **Models settings page integration**: a `BigModel account` row in
+  Settings → Models (identity, status dot, sign-in state, edit panel with
+  account/email/family/sign-in time, inference credential state and expiry,
+  open-usage and sign-out actions) plus a credential note inside each
+  coding-plan provider card; both match the host's own account-row presentation.
 - **Inference status card and settings**: family selector (BigModel / Z.AI),
   refresh interval, provider gate list, inference toggle and credential
   reference, all persisted in `$DSH_HOME/bigmodelcn-codingplan.json`.
