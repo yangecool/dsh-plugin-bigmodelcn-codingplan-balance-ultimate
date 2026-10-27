@@ -248,7 +248,15 @@ function resetAvailableOf(reset, bucket) {
   if (!isRecord(reset)) return null;
   const entry = reset[bucket];
   if (!isRecord(entry) || !Array.isArray(entry.available)) return null;
-  return entry.available.length;
+  // Only chances whose expiry is still in the future are redeemable; expired
+  // entries can linger in a cached payload and must not inflate the count.
+  const now = Date.now();
+  let count = 0;
+  for (const chance of entry.available) {
+    const expireAt = isRecord(chance) && typeof chance.expireAt === 'number' ? chance.expireAt : null;
+    if (expireAt !== null && expireAt > now) count += 1;
+  }
+  return count;
 }
 
 /** @returns {number|null} epoch ms of the most recent successful refresh. */

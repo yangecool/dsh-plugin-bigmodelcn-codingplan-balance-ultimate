@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-bigmodelcn-codingplan-balance-ultimate",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "BigModel Coding Plan quota and usage for the DeepSeek Harness Web GUI: BigModel OAuth login, a remaining-quota popover at the composer, and a dedicated usage statistics page.",
   "type": "module",
   "main": "lib/index.js",

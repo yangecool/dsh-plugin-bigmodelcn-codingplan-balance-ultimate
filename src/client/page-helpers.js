@@ -65,6 +65,26 @@ export function clampPercent(value) {
 }
 
 /**
+ * Keep only reset opportunities that are still live at `nowMs`.
+ *
+ * ZCode gates the manual use on `opportunityExpiresAt > now` at both render and
+ * click time; the backend answers a `/use` without a live opportunity with a
+ * 500/code-2007 envelope, so expired entries must never look redeemable here.
+ * @param available - raw `available` array of one reset window.
+ * @param nowMs - epoch milliseconds the expiry is judged against.
+ * @returns the entries whose `expireAt` resolves to a future instant.
+ */
+export function liveOpportunities(available, nowMs) {
+  if (!Array.isArray(available) || !isNumber(nowMs)) {
+    return [];
+  }
+  return available.filter((entry) => {
+    const expireAt = entry !== null && typeof entry === 'object' ? toMs(entry.expireAt) : null;
+    return expireAt !== null && expireAt > nowMs;
+  });
+}
+
+/**
  * Run a producer, returning a fallback instead of throwing.
  * @param producer - zero-argument function.
  * @param fallback - value returned when the producer throws.

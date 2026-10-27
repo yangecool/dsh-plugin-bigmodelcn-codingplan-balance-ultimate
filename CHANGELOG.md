@@ -3,6 +3,23 @@
 All notable changes to this plugin are documented here. Version numbers follow
 [SemVer](https://semver.org/).
 
+## [1.0.1] - 2026-10-27
+
+### Fixed
+
+- **Reset-chance use could fire without a live opportunity**: the usage page
+  counted raw `available` entries, so chances that had expired (or been taken
+  away server-side while a background tab held a stale payload) still looked
+  redeemable, and the backend answered the `/use` with its HTTP 500 / business
+  code 2007 dependency envelope, shown as a generic error. The card now mirrors
+  ZCode's guards: only chances with `expireAt` in the future are counted
+  (render and click time), and confirming re-reads the reset status first, so a
+  stale payload can never consume a click. The 2007 envelope is surfaced as a
+  stable `reset_upstream_busy` error with dedicated "service temporarily
+  unavailable, retry later" copy, and the composer popover counts live chances
+  only. Two weekly chances were consumed by live-endpoint debugging of this
+  issue; no further live `/use` calls are made from tests.
+
 ## [1.0.0] - 2026-10-25
 
 First release: a ZCode-parity rebuild of `dsh-plugin-glm-balance` for BigModel
@@ -47,7 +64,7 @@ Coding Plan accounts.
   inference-credential renewal.
 - ZCode API reference notes with source references (`notes/zcode-api-spec.md`)
   and sanitized response fixtures (`tests/fixtures/`).
-- 239 unit and integration tests: OAuth/account/PAT, upstream normalizers over
+- 255 unit and integration tests: OAuth/account/PAT, upstream normalizers over
   fixtures, snapshot caching and error mapping, inference bookkeeping, client
   formatters, and a Host integration suite that exercises the real route table
   with only the network replaced.

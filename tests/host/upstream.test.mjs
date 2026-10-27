@@ -959,7 +959,7 @@ describe('coding plan reset requests', () => {
     await assert.rejects(
       business.upstream.resetStatus({ family: 'bigmodel', auth: resetAuth }),
       (error) => {
-        assert.equal(error.code, 'upstream_failed');
+        assert.equal(error.code, 'reset_upstream_busy');
         return true;
       },
     );
@@ -971,6 +971,29 @@ describe('coding plan reset requests', () => {
       invalid.upstream.resetStatus({ family: 'bigmodel', auth: resetAuth }),
       (error) => {
         assert.equal(error.code, 'upstream_failed');
+        return true;
+      },
+    );
+  });
+
+  it('maps the 500/code-2007 dependency envelope of a chanceless /use to reset_upstream_busy', async () => {
+    // Observed live: a /use without a live opportunity answers HTTP 500 with
+    // business code 2007; ZCode surfaces it as a transient retry-later state.
+    const busy = createHarness(
+      resetRoutes({
+        '/api/v1/coding-plan/reset/use': { status: 500, body: { code: 2007, msg: 'http error' } },
+      }),
+    );
+    await assert.rejects(
+      busy.upstream.useReset({
+        family: 'bigmodel',
+        auth: resetAuth,
+        resetType: 'FIVE_HOUR',
+        idempotencyKey: 'key-3',
+      }),
+      (error) => {
+        assert.equal(error.code, 'reset_upstream_busy');
+        assert.equal(error.status, 502);
         return true;
       },
     );
@@ -1059,7 +1082,7 @@ describe('coding plan reset requests', () => {
         idempotencyKey: 'opportunity-5',
       }),
       (error) => {
-        assert.equal(error.code, 'upstream_failed');
+        assert.equal(error.code, 'reset_upstream_busy');
         return true;
       },
     );

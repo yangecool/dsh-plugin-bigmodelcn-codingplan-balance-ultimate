@@ -28,6 +28,7 @@ import {
   displayNameOf,
   errorTextOf,
   familyId,
+  liveOpportunities,
   planStatusOf,
   toMs,
   windowOf,
@@ -437,6 +438,9 @@ function resetErrorText(t, error) {
   if (code === 'reset_throttled' || code === 'rate_limited') {
     return t('reset.throttled');
   }
+  if (code === 'reset_upstream_busy') {
+    return t('reset.upstreamBusy');
+  }
   if (code === 'reset_unavailable') {
     return t('reset.unavailable');
   }
@@ -452,9 +456,11 @@ function resetErrorText(t, error) {
 /**
  * Reset-chances card.
  *
- * The store generates the idempotency key and forces the reset/overview
- * refresh after a successful use, so the card only owns the inline confirm and
- * the per-attempt outcome.
+ * Mirrors ZCode's manual-use guards: the action is gated on opportunities that
+ * are still live (`expireAt > now`), and confirming re-reads the reset status
+ * first so a stale payload can never send a `/use` the backend would answer
+ * with its 500/code-2007 dependency envelope. The store generates the
+ * idempotency key and forces the reset/overview refresh after a successful use.
  * @param props - `t`, `locale`, `now`, `reset`, `onUsed(resetType)`.
  * @returns the card element, or null when the payload has no window data.
  */
@@ -472,11 +478,38 @@ export function ResetCard(props) {
     return null;
   }
 
+  /**
+   * Count the still-live chances of one window at an explicit instant, so the
+   * click-time reconciliation reuses the exact render-time judgment.
+   */
+  function liveCountOf(kind, atMs, source) {
+    const data = source !== null && typeof source === 'object' ? source[kind.key] : null;
+    const available = data !== null && typeof data === 'object' && Array.isArray(data.available)
+      ? data.available
+      : [];
+    return liveOpportunities(available, atMs).length;
+  }
+
   async function useReset(kind) {
     setConfirmKind(null);
     setBusyKind(kind.resetType);
     setOutcome(null);
     try {
+      // Click-time gate: chances that expired since the last render are not
+      // redeemable anymore (ZCode: `opportunityExpiresAt > now` at click).
+      if (liveCountOf(kind, Date.now(), reset) === 0) {
+        setOutcome({ status: 'unavailable', kind: kind.kindKey });
+        return;
+      }
+      // Reconcile with the server before consuming: a background-tab-stale
+      // payload may still list chances the backend has already taken away. A
+      // failed refresh keeps the click going — the `/use` result stays
+      // authoritative (ZCode reconciles the same way around a manual use).
+      const fresh = await state.loadReset({ force: true });
+      if (fresh !== null && typeof fresh === 'object' && liveCountOf(kind, Date.now(), fresh) === 0) {
+        setOutcome({ status: 'unavailable', kind: kind.kindKey });
+        return;
+      }
       const result = await state.useReset(kind.resetType);
       if (result !== null && typeof result === 'object' && result.ok === true) {
         setOutcome({ status: 'success', kind: kind.kindKey });
@@ -503,6 +536,12 @@ export function ResetCard(props) {
     notices.push(el(Notice, { key: 'success', tone: 'info', children: el('span', null, t('reset.success')) }));
   } else if (outcome !== null && outcome.status === 'throttled') {
     notices.push(el(Notice, { key: 'throttled', tone: 'warn', children: el('span', null, t('reset.throttled')) }));
+  } else if (outcome !== null && outcome.status === 'unavailable') {
+    notices.push(el(Notice, {
+      key: 'unavailable',
+      tone: 'warn',
+      children: el('span', null, t('reset.noneLive')),
+    }));
   } else if (outcome !== null && outcome.status === 'error') {
     notices.push(el(Notice, {
       key: 'error',
@@ -517,8 +556,13 @@ export function ResetCard(props) {
     const available = Array.isArray(data.available)
       ? data.available.filter((entry) => entry !== null && typeof entry === 'object')
       : [];
-    const count = available.length;
-    const expiries = available
+    // ZCode parity: only chances whose expiry is still in the future are
+    // redeemable; the count and the action follow the live subset.
+    const nowMs = typeof now === 'number' ? now : Date.now();
+    const live = liveOpportunities(available, nowMs);
+    const count = live.length;
+    const expired = available.length - live.length;
+    const expiries = live
       .map((entry) => toMs(entry.expireAt))
       .filter((value) => value !== null);
     const earliestExpiry = expiries.length > 0 ? Math.min(...expiries) : null;
@@ -532,6 +576,9 @@ export function ResetCard(props) {
         el('span', { className: 'bmc-page-reset-title' }, t(kind.titleKey)),
         el('div', { className: 'bmc-page-reset-meta' },
           el('span', null, t('reset.availableCount', { count })),
+          expired > 0
+            ? el('span', null, t('reset.expiredHint', { count: expired }))
+            : null,
           earliestExpiry !== null
             ? el('span', null, t('reset.expiresAt', { time: formatResetAt(earliestExpiry, locale, now) }))
             : null,
