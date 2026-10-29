@@ -3,6 +3,23 @@
 All notable changes to this plugin are documented here. Version numbers follow
 [SemVer](https://semver.org/).
 
+## [1.1.1] - 2026-10-29
+
+### Fixed
+
+- **Dark-mode popover**: the composer popover reused the opaque
+  `--dsw-alias-bg-overlay` fill, which the theme documents as a raised dark
+  surface that reads too heavy — it rendered as an unadapted gray box in dark
+  mode. The surface now uses the host menu recipe (translucent
+  `--dsw-specific-menu` fill, menu backdrop blur, elevation shadow with the
+  0.5px hairline stroke, menu scrollbar tokens); stat tiles blend through
+  `menu-group-header-fill` and links use the accent link token.
+
+### Changed
+
+- Each composer ring now carries its rounded remaining percentage centered
+  inside (MUI `CircularProgressWithLabel` pattern) at 24px.
+
 ## [1.1.0] - 2026-10-29
 
 ### Added
