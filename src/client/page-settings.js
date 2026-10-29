@@ -250,6 +250,7 @@ export function InferenceCard(props) {
   }
 
   const enabled = config.inferenceEnabled !== false;
+  const autoCreateProvider = config.autoCreateProvider !== false;
   const loggedIn = auth !== null && auth !== undefined && auth.loggedIn === true && auth.loginExpired !== true;
   const statusInfo = inference !== null && inference !== undefined && typeof inference === 'object'
     ? inference
@@ -341,6 +342,21 @@ export function InferenceCard(props) {
     }
   }
 
+  async function toggleAutoProvider() {
+    if (toggleBusy) return;
+    setToggleBusy(true);
+    try {
+      const result = await state.saveConfig({ autoCreateProvider: autoCreateProvider !== true });
+      if (result !== null && typeof result === 'object' && result.ok === true) {
+        void state.refreshOverview({ force: true });
+      }
+    } catch {
+      // The switch falls back to the persisted value on the next render.
+    } finally {
+      setToggleBusy(false);
+    }
+  }
+
   let feedback = null;
   let feedbackClass = 'bmc-page-save-feedback';
   if (refStatus === 'saving') {
@@ -375,6 +391,19 @@ export function InferenceCard(props) {
           el('span', { className: 'bmc-page-switch-thumb' })),
         el('span', null, t('page.inferenceToggle'))),
       el('p', { className: 'bmc-page-field-hint' }, t('page.inferenceHint'))),
+    el('div', { className: 'bmc-page-field' },
+      el('label', { className: 'bmc-page-switch' },
+        el('input', {
+          type: 'checkbox',
+          checked: autoCreateProvider,
+          disabled: toggleBusy,
+          onChange: toggleAutoProvider,
+          'aria-label': t('page.providerToggle'),
+        }),
+        el('span', { className: 'bmc-page-switch-track' },
+          el('span', { className: 'bmc-page-switch-thumb' })),
+        el('span', null, t('page.providerToggle'))),
+      el('p', { className: 'bmc-page-field-hint' }, t('page.providerHint'))),
     el('div', { className: 'bmc-page-field' },
       el('span', { className: 'bmc-page-field-label' }, t('page.inferenceRefLabel')),
       el('div', { className: 'bmc-page-field-controls' },

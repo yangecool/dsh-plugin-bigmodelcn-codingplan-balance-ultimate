@@ -1053,9 +1053,11 @@ export function ComposerIndicator({ t: translate, sessionId }) {
         h('span', { className: 'bmc-widget-dash' }, t('widget.value.dash')),
       );
     } else {
-      content = h('span', { className: 'bmc-widget-rows' },
-        triggerRow(fiveHour, 'fiveHour', locale, t),
-        triggerRow(week, 'week', locale, t),
+      // Two independent rings (5-hour, then weekly — the popover's order): at
+      // this size nested rings would blur the two windows into one glyph.
+      content = h('span', { className: 'bmc-widget-rings' },
+        triggerRing(fiveHour, 'fiveHour'),
+        triggerRing(week, 'week'),
       );
     }
   }
@@ -1086,22 +1088,35 @@ export function ComposerIndicator({ t: translate, sessionId }) {
 }
 
 /**
- * One trigger meter row. The composer trigger is a `<button>`, so its content
- * stays phrasing-only: the 16x3 px meter is built from spans instead of the
- * block-level shared `Bar`.
- * @returns {import('react').ReactElement} trigger meter row.
+ * One trigger progress ring: a 16x16 inline SVG whose arc length is the
+ * remaining fraction of one quota window. The composer trigger is a
+ * `<button>`, so the glyph stays phrasing content; a window without data
+ * renders its track only, keeping the pair visually balanced.
+ * @param percent - remaining percentage of the window, or null when unknown.
+ * @param key - stable element key (`fiveHour` | `week`).
+ * @returns {import('react').ReactElement} trigger ring glyph.
  */
-function triggerRow(percent, key, locale, t) {
+function triggerRing(percent, key) {
   const value = clampPercent(percent);
-  return h('span', { className: 'bmc-widget-row', key },
-    h('span', { className: 'bmc-widget-track' },
-      h('span', {
-        className: `bmc-widget-fill bmc-widget-fill-${toneOf(value)}`,
-        style: { width: `${value ?? 0}%` },
-      }),
-    ),
-    h('span', { className: 'bmc-widget-pct' }, percentText(value, locale, t)),
-  );
+  const radius = 5.75;
+  const circumference = 2 * Math.PI * radius;
+  const fraction = value === null ? 0 : Math.min(100, Math.max(0, value)) / 100;
+  return h('svg', {
+    key,
+    className: 'bmc-widget-ring',
+    viewBox: '0 0 16 16',
+    'aria-hidden': 'true',
+    focusable: 'false',
+  },
+    h('circle', { className: 'bmc-widget-ring-track', cx: 8, cy: 8, r: radius }),
+    h('circle', {
+      className: `bmc-widget-ring-arc bmc-widget-ring-arc-${toneOf(value)}`,
+      cx: 8,
+      cy: 8,
+      r: radius,
+      transform: 'rotate(-90 8 8)',
+      strokeDasharray: `${(circumference * fraction).toFixed(2)} ${circumference.toFixed(2)}`,
+    }));
 }
 
 /** @returns {string} localized tooltip/aria-label for the trigger. */
@@ -1282,59 +1297,46 @@ export const indicatorCss = `
   outline-offset: 1px;
 }
 
-.bmc-widget-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.bmc-widget-row {
-  display: flex;
+.bmc-widget-rings {
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 10px;
+  gap: 3px;
+  padding: 0 1px;
 }
 
-.bmc-widget-track {
+.bmc-widget-ring {
   display: block;
-  flex: none;
   width: 16px;
-  height: 3px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--dsw-alias-label-secondary) 24%, transparent);
+  height: 16px;
 }
 
-.bmc-widget-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
+.bmc-widget-ring-track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--dsw-alias-label-secondary) 26%, transparent);
+  stroke-width: 2.5px;
 }
 
-.bmc-widget-fill-brand {
+.bmc-widget-ring-arc {
+  fill: none;
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+}
+
+.bmc-widget-ring-arc-brand {
   /* Data accent: --dsw-alias-brand-primary is the monochrome button color. */
-  background: var(--dsw-alias-state-business-primary, var(--dsw-alias-link));
+  stroke: var(--dsw-alias-state-business-primary, var(--dsw-alias-link));
 }
 
-.bmc-widget-fill-warn {
-  background: var(--dsw-alias-state-warn-primary);
+.bmc-widget-ring-arc-warn {
+  stroke: var(--dsw-alias-state-warn-primary);
 }
 
-.bmc-widget-fill-error {
-  background: var(--dsw-alias-state-error-primary);
+.bmc-widget-ring-arc-error {
+  stroke: var(--dsw-alias-state-error-primary);
 }
 
-.bmc-widget-fill-idle {
-  background: var(--dsw-alias-state-idle-primary);
-}
-
-.bmc-widget-pct {
-  min-width: 22px;
-  font-size: 10px;
-  line-height: 10px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  color: var(--dsw-alias-label-secondary);
+.bmc-widget-ring-arc-idle {
+  stroke: var(--dsw-alias-state-idle-primary);
 }
 
 .bmc-widget-login-content {

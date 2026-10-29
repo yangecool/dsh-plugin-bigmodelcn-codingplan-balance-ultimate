@@ -10,7 +10,8 @@ It signs in to BigModel with OAuth, shows the remaining Coding Plan quota in a
 composer popover, opens a dedicated usage statistics page, and — the part that
 removes the last manual step — writes the Coding Plan project token into the
 DeepSeek Harness credential store so model inference works **without pasting an
-API key**.
+API key**; the same login provisions the Models provider row, so the Coding
+Plan models are selectable immediately.
 
 ## Why this exists
 
@@ -25,8 +26,9 @@ ZCode's Coding Plan capability set:
   Coding Plan project access token and stores it under the credential reference
   that the `zai-coding-cn` pi-ai route resolves, then renews it before expiry.
   Select a model from that provider and chat — no key prompt.
-- **Composer remaining-quota popover**: two compact bars at the composer open a
-  floating card with the 5-hour and weekly remaining percentages, reset
+- **Composer remaining-quota popover**: two side-by-side progress rings (the
+  5-hour and the weekly window; theme-colored for light and dark mode) at the
+  composer open a floating card with the remaining percentages, reset
   countdowns, today's tokens/calls, remaining reset chances, and shortcuts to
   the full page.
 - **Dedicated usage statistics page** (sidebar panel):
@@ -106,7 +108,8 @@ Settings (`Settings` card on the page, or edit the JSON while DSH is stopped):
   "showIndicatorWhenLoggedOut": false,
   "usagePageUrl": "",
   "inferenceEnabled": true,
-  "inferenceCredentialRef": "ZAI_CODING_CN_API_KEY"
+  "inferenceCredentialRef": "ZAI_CODING_CN_API_KEY",
+  "autoCreateProvider": true
 }
 ```
 
@@ -123,6 +126,11 @@ Settings (`Settings` card on the page, or edit the JSON while DSH is stopped):
 - `inferenceEnabled` / `inferenceCredentialRef` — the model-inference sign-in
   described above. Set the reference to whatever the pi-ai provider profile
   names in its `apiKeyEnv`.
+- `autoCreateProvider` — on login, write the minimal `llm-pi-ai` provider
+  profile (`zai-coding-cn` for BigModel, `zai` for Z.AI) so the route's models
+  appear in the picker without a hand-created provider row. A route any layer
+  already configures is never touched, and sign-out removes the row only while
+  it still holds exactly what this plugin wrote.
 
 ## How it works
 
@@ -219,7 +227,11 @@ DeepSeek Harness Web GUI 的 BigModel（智谱）编程套餐额度与用量插�
 - **模型推理自动登录**：登录后插件签发编程套餐项目令牌，写入 pi-ai 路由
   `zai-coding-cn` 解析的凭证引用（默认 `ZAI_CODING_CN_API_KEY`），并在过期前自动
   续期。选该供应商的模型直接对话，不再提示输入密钥。
-- **输入框剩余额度浮窗**：输入框右侧两条紧凑额度条，点开后是浮窗卡片：5 小时 /
+- **登录自动创建模型供应商**：登录后在 设置 → 模型 里自动写入最小供应商配置
+  （BigModel 对应 `zai-coding-cn`，Z.AI 对应 `zai`），其模型立即可选，无需手动创建
+  Provider；退出登录时若该行未被改动会自动移除。
+- **输入框剩余额度浮窗**：输入框右侧两个并排进度圆环（5 小时 / 每周各一环，主题色
+  随明暗模式切换），点开后是浮窗卡片：5 小时 /
   每周剩余百分比、重置倒计时、今日 tokens 与调用次数、剩余重置机会，以及进入完整
   统计页的快捷入口。
 - **独立使用统计页**（侧边栏面板）：套餐卡片、各时间窗口额度卡、重置
@@ -285,6 +297,9 @@ DSH 没有卸载回调，插件无法在自身被移除后清理。若未先退�
   所有供应商都显示（不建议：DeepSeek 会话也会显示 BigModel 额度）。
 - `showIndicatorWhenLoggedOut`：未登录时显示「登录」小徽标而不是隐藏浮窗。
 - `inferenceEnabled` / `inferenceCredentialRef`：模型推理自动登录开关与凭证引用名。
+- `autoCreateProvider`：登录后自动写入 `llm-pi-ai` 的最小供应商配置（BigModel 对应
+  `zai-coding-cn`，Z.AI 对应 `zai`），使模型无需手动创建 Provider 即可选；已有配置的
+  路由永不改写，退出登录仅在该行仍与写入内容一致时移除。
 
 ## 工作原理与安全
 

@@ -3,6 +3,28 @@
 All notable changes to this plugin are documented here. Version numbers follow
 [SemVer](https://semver.org/).
 
+## [1.1.0] - 2026-10-29
+
+### Added
+
+- **Automatic Models-provider provisioning**: a pi-ai route only offers its
+  models once a provider profile resolves from settings, so a login that
+  provisioned the credential still left the models unselectable until the user
+  hand-created a provider row. On login (and at startup with a stored login)
+  the Host now writes the minimal profile — `providers[zai-coding-cn]` for
+  BigModel, `providers[zai]` for Z.AI, each naming `inferenceCredentialRef` as
+  its `apiKeyEnv` — through the same settings service the Models page uses. An
+  already-configured route is never rewritten; sign-out removes the row only
+  while it still holds exactly what was written. Configurable via
+  `autoCreateProvider` (default on) with a switch on the page's inference card.
+
+### Changed
+
+- **Composer trigger redesign**: the two meter bars became two side-by-side
+  16px progress rings (5-hour and weekly window), drawn as inline SVG with
+  theme-token strokes and track, fixing the meter alignment drift and the
+  off-theme colors in dark mode.
+
 ## [1.0.1] - 2026-10-27
 
 ### Fixed
@@ -64,7 +86,7 @@ Coding Plan accounts.
   inference-credential renewal.
 - ZCode API reference notes with source references (`notes/zcode-api-spec.md`)
   and sanitized response fixtures (`tests/fixtures/`).
-- 255 unit and integration tests: OAuth/account/PAT, upstream normalizers over
+- 269 unit and integration tests: OAuth/account/PAT, upstream normalizers over
   fixtures, snapshot caching and error mapping, inference bookkeeping, client
   formatters, and a Host integration suite that exercises the real route table
   with only the network replaced.

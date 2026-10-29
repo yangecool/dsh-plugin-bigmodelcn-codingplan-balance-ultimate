@@ -316,12 +316,14 @@ function createHarness(options = {}) {
   const upstream = createUpstreamMock(options.upstream);
   const oauth = createOAuthMock(options.oauth);
   const inference = options.inference === undefined ? createInferenceMock() : options.inference;
+  const provider = options.provider;
   const snapshot = createSnapshot({
     store,
     oauth,
     account,
     upstream,
     inference,
+    provider,
     logger: silentLogger,
     now: () => clock,
   });
@@ -1030,5 +1032,48 @@ describe('loginStatus and logout', () => {
     assert.equal(status.inference.available, false);
     const overview = await harness.snapshot.overview({ force: true });
     assert.equal(overview.inference.error, 'inference_status_failed');
+  });
+});
+
+/** Provider-provisioning mock recording ensure/release calls. */
+function createProviderMock() {
+  const calls = { ensure: [], release: 0 };
+  return {
+    calls,
+    async ensure(args) {
+      calls.ensure.push(args ?? {});
+      return { created: false, reason: 'already_configured' };
+    },
+    async release() {
+      calls.release += 1;
+      return { removed: false };
+    },
+  };
+}
+
+describe('provider provisioning wiring', () => {
+  it('ensures the provider row once a login poll turns ready', async () => {
+    const provider = createProviderMock();
+    const harness = createHarness({
+      provider,
+      oauth: { pollResult: { state: 'ready', user: { id: 'user-1', name: 'Alice' } } },
+    });
+    await harness.snapshot.loginStatus();
+    await flush();
+    assert.deepEqual(provider.calls.ensure, [{ family: 'bigmodel' }]);
+  });
+
+  it('releases the provisioned row on logout', async () => {
+    const provider = createProviderMock();
+    const harness = createHarness({ provider });
+    await harness.snapshot.logout();
+    await flush();
+    assert.equal(provider.calls.release, 1);
+  });
+
+  it('tolerates a snapshot built without the provider module', async () => {
+    const harness = createHarness();
+    await assert.doesNotReject(harness.snapshot.loginStatus());
+    await assert.doesNotReject(harness.snapshot.logout());
   });
 });

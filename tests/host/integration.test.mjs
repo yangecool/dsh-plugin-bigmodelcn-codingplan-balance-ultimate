@@ -334,6 +334,11 @@ test('host entry wires every route under the plugin prefix and disposes them', a
       if (typeof dispose === 'function') disposers.push(dispose);
       return () => {};
     },
+    // The settings service never arrives in this harness; the startup
+    // provisioning callback must simply stay dormant.
+    inject(names, callback) {
+      return () => {};
+    },
     get() {
       return undefined;
     },
