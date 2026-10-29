@@ -1053,8 +1053,9 @@ export function ComposerIndicator({ t: translate, sessionId }) {
         h('span', { className: 'bmc-widget-dash' }, t('widget.value.dash')),
       );
     } else {
-      // Two independent rings (5-hour, then weekly — the popover's order): at
-      // this size nested rings would blur the two windows into one glyph.
+      // Two independent rings (5-hour, then weekly — the popover's order):
+      // side-by-side keeps both windows readable, and each ring keeps its own
+      // fixed hue so the pair stays distinguishable in light and dark themes.
       content = h('span', { className: 'bmc-widget-rings' },
         triggerRing(fiveHour, 'fiveHour'),
         triggerRing(week, 'week'),
@@ -1098,25 +1099,35 @@ export function ComposerIndicator({ t: translate, sessionId }) {
  */
 function triggerRing(percent, key) {
   const value = clampPercent(percent);
-  const radius = 5.75;
+  const radius = 9.25;
   const circumference = 2 * Math.PI * radius;
   const fraction = value === null ? 0 : Math.min(100, Math.max(0, value)) / 100;
+  // MUI CircularProgressWithLabel pattern: the rounded percentage sits centered
+  // inside the ring; a window without data keeps the glyph balanced with a dash.
+  const label = value === null ? '\u2013' : String(Math.round(value));
   return h('svg', {
     key,
     className: 'bmc-widget-ring',
-    viewBox: '0 0 16 16',
+    viewBox: '0 0 24 24',
     'aria-hidden': 'true',
     focusable: 'false',
   },
-    h('circle', { className: 'bmc-widget-ring-track', cx: 8, cy: 8, r: radius }),
+    h('circle', { className: 'bmc-widget-ring-track', cx: 12, cy: 12, r: radius }),
     h('circle', {
-      className: `bmc-widget-ring-arc bmc-widget-ring-arc-${toneOf(value)}`,
-      cx: 8,
-      cy: 8,
+      className: `bmc-widget-ring-arc bmc-widget-ring-arc-${key}`,
+      cx: 12,
+      cy: 12,
       r: radius,
-      transform: 'rotate(-90 8 8)',
+      transform: 'rotate(-90 12 12)',
       strokeDasharray: `${(circumference * fraction).toFixed(2)} ${circumference.toFixed(2)}`,
-    }));
+    }),
+    h('text', {
+      className: 'bmc-widget-ring-text',
+      x: 12,
+      y: 12,
+      textAnchor: 'middle',
+      dominantBaseline: 'central',
+    }, label));
 }
 
 /** @returns {string} localized tooltip/aria-label for the trigger. */
@@ -1306,8 +1317,8 @@ export const indicatorCss = `
 
 .bmc-widget-ring {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: 24px;
+  height: 24px;
 }
 
 .bmc-widget-ring-track {
@@ -1322,21 +1333,22 @@ export const indicatorCss = `
   stroke-linecap: round;
 }
 
-.bmc-widget-ring-arc-brand {
-  /* Data accent: --dsw-alias-brand-primary is the monochrome button color. */
+/* One fixed hue per window, mirroring the usage page's series palette:
+   --dsw-alias-brand-primary is the monochrome button color, never a data hue. */
+.bmc-widget-ring-arc-fiveHour {
   stroke: var(--dsw-alias-state-business-primary, var(--dsw-alias-link));
 }
 
-.bmc-widget-ring-arc-warn {
-  stroke: var(--dsw-alias-state-warn-primary);
+.bmc-widget-ring-arc-week {
+  stroke: var(--dsw-alias-state-success-primary);
 }
 
-.bmc-widget-ring-arc-error {
-  stroke: var(--dsw-alias-state-error-primary);
-}
-
-.bmc-widget-ring-arc-idle {
-  stroke: var(--dsw-alias-state-idle-primary);
+.bmc-widget-ring-text {
+  fill: var(--dsw-alias-label-secondary);
+  font-family: inherit;
+  font-size: 7.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .bmc-widget-login-content {
